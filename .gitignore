@@ -1,5 +1,4 @@
-depths.csv
-images.csv
+*.csv
 *.bz2
 *.mat
 *.zip
