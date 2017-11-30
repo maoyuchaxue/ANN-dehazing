@@ -12,9 +12,8 @@ def generate_dataset(depth_data, img_data):
     img = np.reshape(img_img, [3, 640, 480])
     img = np.transpose(img, axes=[2, 1, 0])
     img = np.reshape(img, [480*640, 3])
-    img = img * (1.0 / 256)
 
-    k = random.uniform(0.6, 1.0)
+    k = random.uniform(0.6, 1.0) * 256
     A = np.array([k,k,k])
     beta = random.uniform(-1.5, -0.5)
 
@@ -26,8 +25,8 @@ def generate_dataset(depth_data, img_data):
     img_out = np.reshape(img_out, (480*640*3))
 
     img_out_show = np.reshape(img_out, (480, 640, 3))
-
-    return [",".join([str(k) for k in img_out.tolist()]), ",".join([str(k) for k in orig_img.tolist()])]
+    
+    return [",".join([str(int(k)) for k in img_out.tolist()]), ",".join([str(int(k)) for k in orig_img.tolist()])]
 
 depth_file = open("./depths.csv", "r")
 img_file = open("./images.csv", "r")
@@ -48,8 +47,9 @@ for i in range(TOT_DATA):
     for j in range(REPEAT_TIMES):
         l1, l2 = generate_dataset(d1, d2)
 
-        hazed_img_file.write(str(tot) + "," + l1 + "\n")
-        original_img_file.write(str(tot) + "," + l2 + "\n")
+        hazed_img_file.write(str(i) + "," + str(j) + "," + l1 + "\n")
+        if (j == 0):
+            original_img_file.write(str(i) + "," + l2 + "\n")
 
         tot += 1
         print(tot)
