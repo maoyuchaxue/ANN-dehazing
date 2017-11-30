@@ -2,3 +2,4 @@ depths.csv
 images.csv
 *.bz2
 *.mat
+*.zip

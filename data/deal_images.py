@@ -25,12 +25,30 @@ print mx, mi
 depth_img = (depth_img - mi) / (mx - mi)
 depth_img = np.reshape(depth_img, [640, 480])
 depth_img = np.transpose(depth_img)
-cv2.imshow("test", depth_img)
+depth_img = np.reshape(depth_img, [640 * 480])
 
 img = np.reshape(img_img, [3, 640, 480])
 img = np.transpose(img, axes=[2, 1, 0])
-cv2.imshow("img", img)
+img = np.reshape(img, [480*640, 3])
+img = img * (1.0 / 256)
 
+
+import random
+
+k = random.uniform(0.7, 1.0)
+A = np.array([k,k,k])
+beta = random.uniform(-1.5, -0.5)
+
+tx = np.reshape(np.exp(depth_img * beta), (480*640, 1))
+
+print A
+
+img_out = tx * img + A * (1-tx)
+# img_out = A * (1-tx)
+
+img_out = np.reshape(img_out, (480, 640, 3))
+
+cv2.imshow("imgout", img_out)
 
 
 while True:
