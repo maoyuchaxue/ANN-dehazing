@@ -1,0 +1,40 @@
+function test_suite = test_eval_seg()
+  initTestSuite;
+end
+
+function test_all_correct()
+  numClasses = 5;
+  groundTruth = randi(numClasses, [3 3]);
+  predictions = groundTruth;
+  
+  [accuracy, numCorrect, numLabeled, cm] = eval_seg(predictions, ...
+      groundTruth, numClasses);
+  assertEqual(accuracy, 1.0);
+  assertEqual(numCorrect, 9);
+  assertEqual(numLabeled, 9);
+end
+
+function test_all_incorrect()
+  numClasses = 5;
+  groundTruth = randi(numClasses, [3 3]);
+  predictions = groundTruth + 1;
+  
+  [accuracy, numCorrect, numLabeled, cm] = eval_seg(predictions, ...
+      groundTruth, numClasses);
+  assertEqual(accuracy, 0.0);
+  assertEqual(numCorrect, 0);
+  assertEqual(numLabeled, 9);
+end
+
+function test_some_correct()
+  numClasses = 5;
+  groundTruth = randi(numClasses, [3 3]);
+  incorrect = randi(2, [3 3]);
+  predictions = groundTruth + incorrect - 1;
+  
+  [accuracy, numCorrect, numLabeled, cm] = eval_seg(predictions, ...
+      groundTruth, numClasses);
+  assertEqual(accuracy, nnz(i);
+  assertEqual(numCorrect, 0);
+  assertEqual(numLabeled, 9);
+end
