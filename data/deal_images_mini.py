@@ -47,9 +47,9 @@ for i in range(TOT_DATA):
     for j in range(REPEAT_TIMES):
         l1, l2 = generate_dataset(d1, d2)
 
-        hazed_img_file.write(str(i) + "," + str(j) + "," + l1 + "\n")
+        hazed_img_file.write(l1 + "\n")
         if (j == 0):
-            original_img_file.write(str(i) + "," + l2 + "\n")
+            original_img_file.write(l2 + "\n")
 
         tot += 1
         print(tot)
