@@ -15,8 +15,8 @@ def getDarkChannel(im=None, *args, **kwargs):
     padding = int(math.ceil(numWindowPixels / 2.0))
     J = np.zeros((height,width))
     paddedImage = np.pad(im, (padding, padding), 'constant', constant_values=(np.inf, np.inf))
-    for j in xrange(0, height):
-        for i in xrange(0, width):
+    for j in range(0, height):
+        for i in range(0, width):
             window = paddedImage[j : j + numWindowPixels - 1, i : i + numWindowPixels - 1, :]
             J[j, i] = np.amin(window)
     return J
@@ -32,7 +32,7 @@ def getAtmLight(im=None, JDark=None, *args, **kwargs):
     indices = indices[-topPixels:]
     tempAtm = np.zeros((1,3))
 
-    for ind in xrange(0, int(topPixels)):
+    for ind in range(0, int(topPixels)):
         tempAtm = tempAtm + ImVec[indices[ind], :]
 
     A = tempAtm / topPixels
@@ -42,7 +42,7 @@ def getAtmLight(im=None, JDark=None, *args, **kwargs):
 def getTransmission(im=None, A=None, *args, **kwargs):
     omega = 0.95
     newImage = np.zeros(im.shape)
-    for ind in xrange(0,3):
+    for ind in range(0,3):
         newImage[:, :, ind] = im[:, :, ind] / A[ind]
 
     return 1 - omega * getDarkChannel(newImage)
@@ -50,7 +50,7 @@ def getTransmission(im=None, A=None, *args, **kwargs):
 def getRadiance(atmLight=None, im=None, transmission=None, *args, **kwargs):
     t0 = 0.1
     J = np.zeros(im.shape)
-    for ind in xrange(0,3):
+    for ind in range(0,3):
         J[:, :, ind] = atmLight[ind] + (im[:, :, ind] - atmLight[ind]) / np.maximum(transmission, t0)
 
     return J / np.amax(J)
@@ -73,7 +73,7 @@ def performSoftMatting(im=None, transmission=None, *args, **kwargs):
 
     totalPixels = numWindowPixels ** 2
     windowWidth = 3
-    windowIndicies = np.reshape(xrange(1, width * height + 1), (width, height), order='F')
+    windowIndicies = np.reshape(range(1, width * height + 1), (width, height), order='F')
     totalElements = totalPixels * (width - 2) * (height - 2)
     xIndicies = np.ones((1, totalElements))
     yIndicies = np.ones((1, totalElements))
@@ -90,8 +90,8 @@ def performSoftMatting(im=None, transmission=None, *args, **kwargs):
 
     U = epsilon / numWindowPixels * identity(windowWidth)
 
-    for i in xrange(windowRadius, height - windowRadius):
-        for j in xrange(windowRadius, width - windowRadius):
+    for i in range(windowRadius, height - windowRadius):
+        for j in range(windowRadius, width - windowRadius):
             window = im[j - windowRadius: j + windowRadius + 1, i - windowRadius : i + windowRadius + 1, :]
 
             reshapedWindow = np.reshape(window, (numWindowPixels, 3), order='F')

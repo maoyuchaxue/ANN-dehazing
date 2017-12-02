@@ -49,22 +49,21 @@ psnrs = []
 ssims = []
 uqis = []
 
+i = 0
 for original_l in original_image_f:
     original_arr = [int(t) for t in original_l.split(",")]
-    original_ind = original_arr[0]
-    original_img = np.reshape(np.array(original_arr[1:]), (480, 640, 3)) / 255.0
-
+    original_img = np.reshape(np.array(original_arr[0:]), (480, 640, 3)) / 255.0
+    hazed_ind = i
+    i += 1
     # cv2.imwrite("output/" + str(original_ind) + ".jpg", original_img)
 
     for j in range(5):
 
         hazed_l = hazed_image_f.readline()
         hazed_arr = [int(t) for t in hazed_l.split(",")]
-        hazed_ind = hazed_arr[0]
-        hazed_sub_ind = hazed_arr[1]
 
-
-        hazed_img = np.reshape(np.array(hazed_arr[2:]), (480, 640, 3))
+        hazed_sub_ind = j
+        hazed_img = np.reshape(np.array(hazed_arr[0:]), (480, 640, 3))
         
         # print hazed_ind, hazed_sub_ind, original_img.shape, hazed_img.shape
         rad, refined = deHaze(hazed_img, str(hazed_ind)+"_"+str(hazed_sub_ind))
