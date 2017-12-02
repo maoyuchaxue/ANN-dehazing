@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import cv2
 
 def generate_dataset(depth_data, img_data):
     depth_img = np.array(depth_data)
@@ -13,28 +14,33 @@ def generate_dataset(depth_data, img_data):
     img = np.transpose(img, axes=[2, 1, 0])
     img = np.reshape(img, [480*640, 3])
 
-    k = random.uniform(0.6, 1.0) * 256
+    k = random.uniform(0.7, 1.0) * 255
     A = np.array([k,k,k])
-    beta = random.uniform(-1.5, -0.5)
+    beta = random.uniform(-1.5, -0.5) / 2
 
     tx = np.reshape(np.exp(depth_img * beta), (480*640, 1))
 
     img_out = tx * img + A * (1-tx)
 
-    orig_img = np.reshape(img, (480*640*3))
+    orig_img = np.reshape(img, (480, 640, 3))
     img_out = np.reshape(img_out, (480*640*3))
 
     img_out_show = np.reshape(img_out, (480, 640, 3))
+    # cv2.imshow("img", img_out_show / 255)
     
-    return [",".join([str(int(k)) for k in img_out.tolist()]), ",".join([str(int(k)) for k in orig_img.tolist()])]
+    return img_out_show, orig_img
 
 depth_file = open("./depths.csv", "r")
 img_file = open("./images.csv", "r")
-hazed_img_file = open("./hazed_images.csv", "w")
-original_img_file = open("./original_images.csv", "w")
 
-TOT_DATA = 2248
-REPEAT_TIMES = 5;
+# hazed_img_file = open("./hazed_images.csv", "w")
+# original_img_file = open("./original_images.csv", "w")
+
+# TOT_DATA = 2248
+# REPEAT_TIMES = 5;
+
+TOT_DATA = 4
+REPEAT_TIMES = 1
 
 tot = 0
 for i in range(TOT_DATA):
@@ -47,14 +53,15 @@ for i in range(TOT_DATA):
     for j in range(REPEAT_TIMES):
         l1, l2 = generate_dataset(d1, d2)
 
-        hazed_img_file.write(str(i) + "," + str(j) + "," + l1 + "\n")
-        if (j == 0):
-            original_img_file.write(str(i) + "," + l2 + "\n")
+        # hazed_img_file.write(str(i) + "," + str(j) + "," + l1 + "\n")
+        
+        cv2.imwrite("./output/" + str(i) + "_" + str(j) + ".jpg", np.concatenate([l2, l1], axis=1))
+
+        # if (j == 0):
+            # original_img_file.write(str(i) + "," + l2 + "\n")
 
         tot += 1
         print(tot)
     
 depth_file.close()
 img_file.close()
-hazed_img_file.close()
-original_img_file.close()
