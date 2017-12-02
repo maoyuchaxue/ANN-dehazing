@@ -56,10 +56,14 @@ def getRadiance(atmLight=None, im=None, transmission=None, *args, **kwargs):
     return J / np.amax(J)
 
 neighbors = []
-neighbor_count = 0;
+neighbor_count = 0
 
 def performSoftMatting(im=None, transmission=None, *args, **kwargs):
     global neighbors
+    global neighbor_count
+    
+    neighbors = []
+    neighbor_count = 0
 
     width, height, depth = im.shape
     windowRadius = 1
@@ -125,7 +129,7 @@ def PSNR(origin, recovered):
     return skimage.measure.compare_psnr(origin, recovered)
 
 def SSIM(origin, recovered):
-    return skimage.measure.compare_ssim(origin, recovered)
+    return skimage.measure.compare_ssim(origin, recovered, multichannel=True)
 
 def UQI(origin, recovered):
     ori = origin.flatten()
@@ -139,5 +143,5 @@ def UQI(origin, recovered):
 
     cov = np.cov(ori, rec, ddof=1)
 
-    return 4 * cov * mean_ori * mean_rec / ((std_ori + std_rec) * (mean_ori**2 + mean_rec**2))
+    return 4 * cov[0][1] * mean_ori * mean_rec / ((std_ori*std_ori + std_rec*std_rec) * (mean_ori**2 + mean_rec**2))
 
