@@ -14,41 +14,47 @@ folder = args.folder
 fileName = args.file
 
 def deHaze(imageRGB, fileName):
-    cv2.imwrite('output/' + fileName + '_imageRGB.jpg', imageRGB)
+    # cv2.imwrite('output/' + fileName + '_imageRGB.jpg', imageRGB)
     imageRGB = imageRGB / 255.0
 
-    print 'Getting Dark Channel Prior'
+    print('Getting Dark Channel Prior')
     darkChannel = getDarkChannel(imageRGB);
-    cv2.imwrite('output/' + fileName + '_dark.jpg', darkChannel * 255.0)
+    # cv2.imwrite('output/' + fileName + '_dark.jpg', darkChannel * 255.0)
 
-    print 'Getting Atmospheric Light'
+    print('Getting Atmospheric Light')
     atmLight = getAtmLight(imageRGB, darkChannel);
 
-    print 'Getting Transmission'
+    print('Getting Transmission')
     transmission = getTransmission(imageRGB, atmLight);
-    cv2.imwrite('output/' + fileName + '_transmission.jpg', transmission * 255.0)
+    # cv2.imwrite('output/' + fileName + '_transmission.jpg', transmission * 255.0)
 
-    print 'Getting Scene Radiance'
+    print('Getting Scene Radiance', transmission.shape)
     radiance = getRadiance(atmLight, imageRGB, transmission);
-    cv2.imwrite('output/' + fileName + '_radiance.jpg', radiance * 255.0)
+    # cv2.imwrite('output/' + fileName + '_radiance.jpg', radiance * 255.0)
 
-    print 'Apply Soft Matting'
+    print('Apply Soft Matting')
     mattedTransmission = performSoftMatting(imageRGB, transmission);
-    cv2.imwrite('output/' + fileName + '_refinedTransmission.jpg', mattedTransmission * 255.0)
+    # cv2.imwrite('output/' + fileName + '_refinedTransmission.jpg', mattedTransmission * 255.0)
 
-    print 'Getting Scene Radiance'
+    print('Getting Scene Radiance')
     betterRadiance = getRadiance(atmLight, imageRGB, mattedTransmission);
-    cv2.imwrite('output/' + fileName + '_refinedRadiance.jpg', betterRadiance * 255.0)
+    # cv2.imwrite('output/' + fileName + '_refinedRadiance.jpg', betterRadiance * 255.0)
 
-original_image_f = open("../../data/original_images.csv", "r")
-hazed_image_f = open("../../data/hazed_images.csv", "r")
+    return radiance, betterRadiance
+
+original_image_f = open("../../data/original_images_mini.csv", "r")
+hazed_image_f = open("../../data/hazed_images_mini.csv", "r")
+
+psnrs = []
+ssims = []
+uqis = []
 
 for original_l in original_image_f:
     original_arr = [int(t) for t in original_l.split(",")]
     original_ind = original_arr[0]
-    original_img = np.reshape(np.array(original_arr[1:]), (480, 640, 3))
+    original_img = np.reshape(np.array(original_arr[1:]), (480, 640, 3)) / 255.0
 
-    cv2.imwrite("output/" + str(original_ind) + ".jpg", original_img)
+    # cv2.imwrite("output/" + str(original_ind) + ".jpg", original_img)
 
     for j in range(5):
 
@@ -57,10 +63,26 @@ for original_l in original_image_f:
         hazed_ind = hazed_arr[0]
         hazed_sub_ind = hazed_arr[1]
 
-        print hazed_ind, hazed_sub_ind
 
         hazed_img = np.reshape(np.array(hazed_arr[2:]), (480, 640, 3))
-        deHaze(hazed_img, str(hazed_ind)+"_"+str(hazed_sub_ind))
+        
+        # print hazed_ind, hazed_sub_ind, original_img.shape, hazed_img.shape
+        rad, refined = deHaze(hazed_img, str(hazed_ind)+"_"+str(hazed_sub_ind))
 
-        break
-    break
+        psnrs.append(PSNR(original_img, refined))
+        ssims.append(SSIM(original_img, refined))
+        uqis.append(UQI(original_img, refined))
+        
+
+
+original_image_f.close()
+hazed_image_f.close()
+
+
+res_f = open("./baseline_res.csv", "w")
+
+for i in range(len(psnrs)):
+    res_f.write(str(psnrs[i]) + "," + str(ssims[i]) + "," + str(uqis[i]) + "\n")
+
+res_f.close()
+
