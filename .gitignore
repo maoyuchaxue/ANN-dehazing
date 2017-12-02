@@ -2,3 +2,6 @@
 *.bz2
 *.mat
 *.zip
+*.jpg
+*.db
+*.pyc

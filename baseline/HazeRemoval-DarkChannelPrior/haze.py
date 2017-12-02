@@ -1,0 +1,66 @@
+from functions import *
+import argparse
+from skimage import transform
+
+parser = argparse.ArgumentParser(description='Remove image haze using dark channel prior method')
+parser.add_argument('-s','--scale', action="store", dest="scale", default=1, type=float, help="Scaling factor for images")
+parser.add_argument('-f','--folder', action="store", dest="folder", default='beijing1', help="folder name")
+parser.add_argument('-n','--file', action="store", dest="file", default='IMG_8763', help="file name")
+
+args = parser.parse_args()
+
+scalingFactor = args.scale
+folder = args.folder
+fileName = args.file
+
+def deHaze(imageRGB, fileName):
+    cv2.imwrite('output/' + fileName + '_imageRGB.jpg', imageRGB)
+    imageRGB = imageRGB / 255.0
+
+    print 'Getting Dark Channel Prior'
+    darkChannel = getDarkChannel(imageRGB);
+    cv2.imwrite('output/' + fileName + '_dark.jpg', darkChannel * 255.0)
+
+    print 'Getting Atmospheric Light'
+    atmLight = getAtmLight(imageRGB, darkChannel);
+
+    print 'Getting Transmission'
+    transmission = getTransmission(imageRGB, atmLight);
+    cv2.imwrite('output/' + fileName + '_transmission.jpg', transmission * 255.0)
+
+    print 'Getting Scene Radiance'
+    radiance = getRadiance(atmLight, imageRGB, transmission);
+    cv2.imwrite('output/' + fileName + '_radiance.jpg', radiance * 255.0)
+
+    print 'Apply Soft Matting'
+    mattedTransmission = performSoftMatting(imageRGB, transmission);
+    cv2.imwrite('output/' + fileName + '_refinedTransmission.jpg', mattedTransmission * 255.0)
+
+    print 'Getting Scene Radiance'
+    betterRadiance = getRadiance(atmLight, imageRGB, mattedTransmission);
+    cv2.imwrite('output/' + fileName + '_refinedRadiance.jpg', betterRadiance * 255.0)
+
+original_image_f = open("../../data/original_images.csv", "r")
+hazed_image_f = open("../../data/hazed_images.csv", "r")
+
+for original_l in original_image_f:
+    original_arr = [int(t) for t in original_l.split(",")]
+    original_ind = original_arr[0]
+    original_img = np.reshape(np.array(original_arr[1:]), (480, 640, 3))
+
+    cv2.imwrite("output/" + str(original_ind) + ".jpg", original_img)
+
+    for j in range(5):
+
+        hazed_l = hazed_image_f.readline()
+        hazed_arr = [int(t) for t in hazed_l.split(",")]
+        hazed_ind = hazed_arr[0]
+        hazed_sub_ind = hazed_arr[1]
+
+        print hazed_ind, hazed_sub_ind
+
+        hazed_img = np.reshape(np.array(hazed_arr[2:]), (480, 640, 3))
+        deHaze(hazed_img, str(hazed_ind)+"_"+str(hazed_sub_ind))
+
+        break
+    break
