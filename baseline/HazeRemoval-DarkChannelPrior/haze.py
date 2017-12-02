@@ -72,11 +72,12 @@ for original_l in original_image_f:
         psnrs.append(PSNR(original_img, refined))
         ssims.append(SSIM(original_img, refined))
         uqis.append(UQI(original_img, refined))
-        
+        print(psnrs, ssims, uqis)
 
 
 original_image_f.close()
 hazed_image_f.close()
+
 
 
 res_f = open("./baseline_res.csv", "w")
