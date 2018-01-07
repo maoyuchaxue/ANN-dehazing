@@ -1,22 +1,24 @@
 import tensorflow as tf
+import vgg16
 
 class CGAN(object):
-    def __init__(self, sess, batch_size, z_dim, learning_rate):
+    def __init__(self, sess, batch_size, z_dim, learning_rate, lambda_d, lambda_p):
         self.sess = sess
         self.batch_size = batch_size
-        self.z_dim = z_dim
+        self.z_dim = z_dim # dimension of noise vector
         self.learning_rate = learning_rate
+        self.lambda_p
         self.beta1 = 0.5 # ???
         self.input_height = 480
         self.input_weight = 640
         self.input_channel = 3
 
         self.data_X, self.data_Y = load_data()
-        self.num_batches = len(self.data_X) // self.batch_size
+        # self.num_batches = len(self.data_X) // self.batch_size
         
 
     def discriminator(self, x, y, is_training=True, reuse=False):
-        with tf.variable_scope("discriminator", reuse=reuse):
+        with tf.variable_scope("discriminato2r", reuse=reuse):
 
             # merge image and label
 
@@ -49,11 +51,12 @@ class CGAN(object):
                    scope='g_bn3'))
 
             out = tf.nn.sigmoid(deconv2d(net, [self.batch_size, 28, 28, 1], 4, 4, 2, 2, name='g_dc4'))
-
+//
             return out
         '''
 
     def build_model(self):
+        # N*H*W*C
         # x : hazed images, labels
         self.x = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight, self.input_channel], name='hazed_images')
         # y : ground truth images, inputs
@@ -62,9 +65,24 @@ class CGAN(object):
         # z : noise vector
         self.z = tf.placeholder(tf.float32, [self.batch_size, self.z_dim], name='z')
         # Conditional GAN
-        D_real, D_real_logits, _ = self.discriminator(self.y, self.x, )
+        D_real, D_real_logits, _ = self.discriminator(self.y, self.x, is_training=True, reuse=False)
         G = self.generator(self.z, self.y, is_training=True, reuse=False)
-        D_fake, D_fake_logits, _  = self.discriminator(G, self.x, is_training=True, reuse=True) # reuse = True????
+        #D_fake, D_fake_logits, _  = self.discriminator(G, self.x, is_training=True, reuse=True) # reuse = True????
+        
+        # Euclidean Loss
+        euclidean_loss = tf.reduce_mean(tf.square(y - G))
+        # Perceptual Loss
+        vgg_y = vgg16.Vgg16()
+        vgg_y.build(y)
+        vgg_G = vgg16.Vgg16()
+        vgg_G.build(G)
+        perceptual_loss = tf.reduce_mean(tf.square(vgg_y.conv2_2-vgg_G.conv2_2))
+        # Discriminator Loss
+        d_loss_real = -tf.reduce_mean(D_real)
+
+        self.loss = self.euclidean_loss + self.lambda_d * self.d_loss_real + self.lambda_p * self.perceptual_loss
+
+
         # TODO: Perceptual Loss
         # self.d_loss =
         # slef.g_loss = 
@@ -83,11 +101,13 @@ class CGAN(object):
 
         # optimizers
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            self.d_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
-                      .minimize(self.d_loss, var_list=d_vars)
-            self.g_optim = tf.train.AdamOptimizer(self.learning_rate*5, beta1=self.beta1) \
-                      .minimize(self.g_loss, var_list=g_vars) # lr *5 beta1 ????
-        
+            self.optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
+                      .minimize(self.loss, var_list=t_vars)
+            #self.d_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
+            #          .minimize(self.d_loss, var_list=d_vars)
+            #self.g_optim = tf.train.AdamOptimizer(self.learning_rate*5, beta1=self.beta1) \
+            #          .minimize(self.g_loss, var_list=g_vars) # lr *5 beta1 ????
+        '''
         """ Summary """
         d_loss_real_sum = tf.summary.scalar("d_loss_real", d_loss_real)
         d_loss_fake_sum = tf.summary.scalar("d_loss_fake", d_loss_fake)
@@ -97,6 +117,11 @@ class CGAN(object):
         # final summary operations
         self.g_sum = tf.summary.merge([d_loss_fake_sum, g_loss_sum])
         self.d_sum = tf.summary.merge([d_loss_real_sum, d_loss_sum])
+        '''
+        p_loss_sum = tf.summary.scalar("p_loss", perceptual_loss)
+        e_loss_sum = tf.summary.scalar("e_loss", euclidean_loss)
+        d_loss_real_summ = tf.summary.scalar("d_loss_real", d_loss_real)
+        self.sum = tf.summary.merge([p_loss_sum, e_loss_sum, d_loss_real_sum]) 
 
     def train(self):
         
@@ -132,11 +157,11 @@ class CGAN(object):
 
             # get batch data
             for idx in range(start_batch_id, self.num_batches):
-                batch_hazed_img = self.data_X[idx * self.batch_size:(idx + 1) * self.batch_size]
-                batch_ground_truth = self.data_y[idx * self.batch_size:(idx + 1) * self.batch_size]
+                batch_hazed_img, batch_ground_truth = next_batch()
+                #batch_hazed_img# self.data_X[idx * self.batch_size:(idx + 1) * self.batch_size]
+                #batch_ground_truth = # self.data_y[idx * self.batch_size:(idx + 1) * self.batch_size]
                 batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]).astype(np.float32)
-                # TODO: change update times k for D network
-
+                '''
                 # update D network
                 _, summary_str, d_loss = self.sess.run([self.d_optim, self.d_sum, self.d_loss],
                                                        feed_dict={self.x: batch_hazed_img, self.y: batch_ground_truth,
@@ -147,11 +172,14 @@ class CGAN(object):
                 _, summary_str, g_loss = self.sess.run([self.g_optim, self.g_sum, self.g_loss],
                                                        feed_dict={self.x: batch_hazed_img, self.z: batch_z})
                 self.writer.add_summary(summary_str, counter)
-
+                '''
+                _, summary_str, loss = self.sess.run([self.optim, self.sum, self.loss],
+                                                       feed_dict={self.x: batch_hazed_img, self.z: batch_z})
+                self.writer.add_summary(summary_str, counter)
                 # display training status
                 counter += 1
-                print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
-                      % (epoch, idx, self.num_batches, time.time() - start_time, d_loss, g_loss))
+                print("Epoch: [%2d] [%4d/%4d] time: %4.4f, loss: %.8f" \
+                      % (epoch, idx, self.num_batches, time.time() - start_time, loss))
 
                 # save training results for every 300 steps
                 if np.mod(counter, 300) == 0:
