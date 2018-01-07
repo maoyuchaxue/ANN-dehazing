@@ -1,11 +1,25 @@
 import tensorflow as tf
+import tensorlayer as tl
+import math
+import numpy as np
+import vgg16
+
+if "concat_v2" in dir(tf):
+    def concat(tensors, axis, *args, **kwargs):
+        return tf.concat_v2(tensors, axis, *args, **kwargs)
+else:
+    def concat(tensors, axis, *args, **kwargs):
+        return tf.concat(tensors, axis, *args, **kwargs)
+
+
 
 class CGAN(object):
-    def __init__(self, sess, batch_size, z_dim, learning_rate):
+    def __init__(self, sess, batch_size, z_dim, learning_rate, lambda_d, lambda_p):
         self.sess = sess
         self.batch_size = batch_size
-        self.z_dim = z_dim
+        self.z_dim = z_dim # dimension of noise vector
         self.learning_rate = learning_rate
+        self.lambda_p
         self.beta1 = 0.5 # ???
         self.input_height = 480
         self.input_weight = 640
@@ -13,9 +27,34 @@ class CGAN(object):
 
         self.data_X, self.data_Y = load_data()
         self.num_batches = len(self.data_X) // self.batch_size
-        
 
-    def discriminator(self, x, y, is_training=True, reuse=False):
+    def Conv_BN_PReLu(self, network, input_channel, output_channel, scope, reuse, is_training, kernel_size=3):
+        with tf.variable_scope(scope, reuse=reuse):
+            network = tl.layers.Conv2dLayer(network,
+                                shape=[kernel_size, kernel_size, input_channel, output_channel],
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                W_init=tf.truncated_normal_initializer(stddev=0.02),
+                                b_init=tf.constant_initializer(value=0.0),
+                                name=scope+'/conv')
+            network = tl.layers.BatchNormLayer(network, is_train=is_training, name=scope+'/bn')
+            network = tl.layers.PReluLayer(network, a_init=0.2, channel_shared=True, name=scope+'/pReLu')
+            return network
+
+    def DeConv_BN_ReLu(self, network, input_channel, output_channel, scope, reuse, is_training, kernel_size=3):
+        with tf.variable_scope(scope, reuse=reuse):
+            network = tl.layers.DeConv2dLayer(network,
+                                              shape=[kernel_size, kernel_size, input_channel, output_channel],
+                                              output_shape=[-1, network.outputs._shape[1], network.outputs._shape[2], output_channel],
+                                              strides=[1, 1, 1, 1],
+                                              padding='SAME',
+                                              W_init=tf.truncated_normal_initializer(stddev=0.02),
+                                              b_init=tf.constant_initializer(value=0.0),
+                                              name=scope + '/deconv')
+            network = tl.layers.BatchNormLayer(network, act=tf.nn.relu, is_train=is_training, name=scope+'/bn')
+            return network
+
+    def discriminator(self, x, y, ndf, is_training=True, reuse=False):
         with tf.variable_scope("discriminator", reuse=reuse):
 
             # merge image and label
@@ -33,13 +72,34 @@ class CGAN(object):
 
             return out, out_logit, net
             '''
+            y = concat([x, y], 3)
+            Input = tl.layers.InputLayer(y, "DInput")
+            CB_K = tl.layers.Conv2dLayer(Input,
+                                        shape=[3, 3, 3, ndf],
+                                        strides=[1, 1, 1, 1],
+                                        padding='SAME',
+                                        W_init=tf.truncated_normal_initializer(stddev=0.02),
+                                        b_init=tf.constant_initializer(value=0.0),
+                                        name='CB_K')
+            CB_K = tl.layers.BatchNormLayer(CB_K, is_train=is_training, name="CB_K_BN")
+            CBP_2K = self.Conv_BN_PReLu(CB_K, ndf, 2 * ndf, "CBP_2K", reuse, is_training)
+            CBP_4K = self.Conv_BN_PReLu(CBP_2K, 2 * ndf, 4 * ndf, "CBP_4K", reuse, is_training)
+            CBP_8K = self.Conv_BN_PReLu(CBP_4K, 4 * ndf, 8 * ndf, "CBP_8K", reuse, is_training)
+            Conv_1 = tl.layers.Conv2dLayer(CBP_8K,
+                                        shape=[3, 3, 8 * ndf, 1],
+                                        strides=[1, 1, 1, 1],
+                                        padding='SAME',
+                                        W_init=tf.truncated_normal_initializer(stddev=0.02),
+                                        b_init=tf.constant_initializer(value=0.0),
+                                        name='Conv_1')
+            out = tf.nn.sigmoid(Conv_1.outputs)
+            return out
 
-    def generator(self, z, y, is_training=True, reuse=False):
+    def generator(self, z, x, ngf, is_training=True, reuse=False):
         with tf.variable_scope("generator", reuse=reuse):
-
             # merge noise and label
             '''
-            z = concat([z, y], 1)
+            z = concat([z, x], 1)
 
             net = tf.nn.relu(bn(linear(z, 1024, scope='g_fc1'), is_training=is_training, scope='g_bn1'))
             net = tf.nn.relu(bn(linear(net, 128 * 7 * 7, scope='g_fc2'), is_training=is_training, scope='g_bn2'))
@@ -49,11 +109,32 @@ class CGAN(object):
                    scope='g_bn3'))
 
             out = tf.nn.sigmoid(deconv2d(net, [self.batch_size, 28, 28, 1], 4, 4, 2, 2, name='g_dc4'))
-
+//
             return out
         '''
+            #z = concat([z, x], 1)
+
+            Input = tl.layers.InputLayer(x, "GInput")
+            G_CBP_K1 = self.Conv_BN_PReLu(Input, 3, ngf, "G_CBP(K)_1", reuse, is_training)
+            G_CBP_K2 = self.Conv_BN_PReLu(G_CBP_K1, ngf, ngf, "G_CBP(K)_2", reuse, is_training)
+            G_CBP_K3 = self.Conv_BN_PReLu(G_CBP_K2, ngf, ngf, "G_CBP(K)_3", reuse, is_training)
+            G_CBP_K4 = self.Conv_BN_PReLu(G_CBP_K3, ngf, ngf, "G_CBP(K)_4", reuse, is_training)
+            G_CBP_K_div_2 = self.Conv_BN_PReLu(G_CBP_K4, ngf, ngf / 2, "G_CBP(K/2)", reuse, is_training)
+            G_CBP_1 = self.Conv_BN_PReLu(G_CBP_K_div_2, ngf / 2, 1, "G_CBP(1)", reuse, is_training)
+            G_DBR_K_div_2 = self.DeConv_BN_ReLu(G_CBP_1, 1, ngf / 2, "G_DBR(K/2)", reuse, is_training)
+            G_DBR_K1 = self.DeConv_BN_ReLu(G_DBR_K_div_2, ngf / 2, ngf, "G_DBR(K)_1", reuse, is_training)
+            G_DBR_K1.outputs = G_DBR_K1.outputs + G_CBP_K4.outputs
+            G_DBR_K2 = self.DeConv_BN_ReLu(G_DBR_K1, ngf, ngf, "G_DBR(K)_2", reuse, is_training)
+            G_DBR_K3 = self.DeConv_BN_ReLu(G_DBR_K2, ngf, ngf, "G_DBR(K)_3", reuse, is_training)
+            G_DBR_K3.outputs = G_DBR_K3.outputs + G_CBP_K2.outputs
+            G_DBR_K4 = self.DeConv_BN_ReLu(G_DBR_K3, ngf, ngf, "G_DBR(K)_4", reuse, is_training)
+            G_DBR_3 = self.DeConv_BN_ReLu(G_DBR_K4, ngf, 3, "G_DBR(3)", reuse, is_training)
+            G_DBR_3.outputs = G_DBR_3.outputs + z
+            out = tf.nn.tanh(G_DBR_3.outputs, name="out")
+            return out
 
     def build_model(self):
+        # N*H*W*C
         # x : hazed images, labels
         self.x = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight, self.input_channel], name='hazed_images')
         # y : ground truth images, inputs
@@ -62,9 +143,24 @@ class CGAN(object):
         # z : noise vector
         self.z = tf.placeholder(tf.float32, [self.batch_size, self.z_dim], name='z')
         # Conditional GAN
-        D_real, D_real_logits, _ = self.discriminator(self.y, self.x, )
+        D_real, D_real_logits, _ = self.discriminator(self.y, self.x, is_training=True, reuse=False)
         G = self.generator(self.z, self.y, is_training=True, reuse=False)
-        D_fake, D_fake_logits, _  = self.discriminator(G, self.x, is_training=True, reuse=True) # reuse = True????
+        #D_fake, D_fake_logits, _  = self.discriminator(G, self.x, is_training=True, reuse=True) # reuse = True????
+        
+        # Euclidean Loss
+        euclidean_loss = tf.reduce_mean(tf.square(y - G))
+        # Perceptual Loss
+        vgg_y = vgg16.Vgg16()
+        vgg_y.build(y)
+        vgg_G = vgg16.Vgg16()
+        vgg_G.build(G)
+        perceptual_loss = tf.reduce_mean(tf.square(vgg_y.conv2_2-vgg_G.conv2_2))
+        # Discriminator Loss
+        d_loss_real = -tf.reduce_mean(D_real)
+
+        self.loss = self.euclidean_loss + self.lambda_d * self.d_loss_real + self.lambda_p * self.perceptual_loss
+
+
         # TODO: Perceptual Loss
         # self.d_loss =
         # slef.g_loss = 
@@ -83,11 +179,13 @@ class CGAN(object):
 
         # optimizers
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            self.d_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
-                      .minimize(self.d_loss, var_list=d_vars)
-            self.g_optim = tf.train.AdamOptimizer(self.learning_rate*5, beta1=self.beta1) \
-                      .minimize(self.g_loss, var_list=g_vars) # lr *5 beta1 ????
-        
+            self.optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
+                      .minimize(self.loss, var_list=t_vars)
+            #self.d_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
+            #          .minimize(self.d_loss, var_list=d_vars)
+            #self.g_optim = tf.train.AdamOptimizer(self.learning_rate*5, beta1=self.beta1) \
+            #          .minimize(self.g_loss, var_list=g_vars) # lr *5 beta1 ????
+        '''
         """ Summary """
         d_loss_real_sum = tf.summary.scalar("d_loss_real", d_loss_real)
         d_loss_fake_sum = tf.summary.scalar("d_loss_fake", d_loss_fake)
@@ -97,6 +195,11 @@ class CGAN(object):
         # final summary operations
         self.g_sum = tf.summary.merge([d_loss_fake_sum, g_loss_sum])
         self.d_sum = tf.summary.merge([d_loss_real_sum, d_loss_sum])
+        '''
+        p_loss_sum = tf.summary.scalar("p_loss", perceptual_loss)
+        e_loss_sum = tf.summary.scalar("e_loss", euclidean_loss)
+        d_loss_real_summ = tf.summary.scalar("d_loss_real", d_loss_real)
+        self.sum = tf.summary.merge([p_loss_sum, e_loss_sum, d_loss_real_sum]) 
 
     def train(self):
         
@@ -132,11 +235,11 @@ class CGAN(object):
 
             # get batch data
             for idx in range(start_batch_id, self.num_batches):
-                batch_hazed_img = self.data_X[idx * self.batch_size:(idx + 1) * self.batch_size]
-                batch_ground_truth = self.data_y[idx * self.batch_size:(idx + 1) * self.batch_size]
+                batch_hazed_img, batch_ground_truth = next_batch()
+                #batch_hazed_img# self.data_X[idx * self.batch_size:(idx + 1) * self.batch_size]
+                #batch_ground_truth = # self.data_y[idx * self.batch_size:(idx + 1) * self.batch_size]
                 batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]).astype(np.float32)
-                # TODO: change update times k for D network
-
+                '''
                 # update D network
                 _, summary_str, d_loss = self.sess.run([self.d_optim, self.d_sum, self.d_loss],
                                                        feed_dict={self.x: batch_hazed_img, self.y: batch_ground_truth,
@@ -147,11 +250,14 @@ class CGAN(object):
                 _, summary_str, g_loss = self.sess.run([self.g_optim, self.g_sum, self.g_loss],
                                                        feed_dict={self.x: batch_hazed_img, self.z: batch_z})
                 self.writer.add_summary(summary_str, counter)
-
+                '''
+                _, summary_str, loss = self.sess.run([self.optim, self.sum, self.loss],
+                                                       feed_dict={self.x: batch_hazed_img, self.z: batch_z})
+                self.writer.add_summary(summary_str, counter)
                 # display training status
                 counter += 1
-                print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
-                      % (epoch, idx, self.num_batches, time.time() - start_time, d_loss, g_loss))
+                print("Epoch: [%2d] [%4d/%4d] time: %4.4f, loss: %.8f" \
+                      % (epoch, idx, self.num_batches, time.time() - start_time, loss))
 
                 # save training results for every 300 steps
                 if np.mod(counter, 300) == 0:
