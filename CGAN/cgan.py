@@ -26,7 +26,7 @@ class CGAN(object):
         self.input_weight = 640
         self.input_channel = 3
 
-        self.test_set = DataSet("../data/output", self.batch_size)  # TODO: change to actual path
+        self.test_set = DataSet("../data/testset", self.batch_size)
         self.train_set = DataSet("../data/output", self.batch_size)
         # self.data_X, self.data_Y = load_data()
         # self.num_batches = len(self.data_X) // self.batch_size
