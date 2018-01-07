@@ -21,6 +21,8 @@ class DataSet(object):
                 if (self.max_size > 0 and self.total_images >= self.max_size):
                     break
 
+        self.total_batches = (self.max_size // self.batch_size) if self.max_size > 0 else (self.total_images // self.batch_size)
+
     def read_image(self, image_name):
         image_path = os.path.join(self.data_dir, image_name)
         img_data = cv2.imread(image_path)

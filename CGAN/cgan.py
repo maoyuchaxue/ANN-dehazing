@@ -3,6 +3,7 @@ import tensorlayer as tl
 import math
 import numpy as np
 import vgg16
+from dataset import DataSet
 
 if "concat_v2" in dir(tf):
     def concat(tensors, axis, *args, **kwargs):
@@ -25,8 +26,11 @@ class CGAN(object):
         self.input_weight = 640
         self.input_channel = 3
 
-        self.data_X, self.data_Y = load_data()
-        self.num_batches = len(self.data_X) // self.batch_size
+        self.test_set = DataSet("../data/output", self.batch_size)  # TODO: change to actual path
+        self.train_set = DataSet("../data/output", self.batch_size)
+        # self.data_X, self.data_Y = load_data()
+        # self.num_batches = len(self.data_X) // self.batch_size
+        self.num_batches = self.train_set.total_batches
 
     def Conv_BN_PReLu(self, network, input_channel, output_channel, scope, reuse, is_training, kernel_size=3):
         with tf.variable_scope(scope, reuse=reuse):
@@ -208,7 +212,8 @@ class CGAN(object):
 
         # graph inputs for visualize training results
         self.sample_z = np.random.uniform(-1, 1, size=(self.batch_size , self.z_dim))
-        self.test_hazed_img = self.data_x[0:self.batch_size]
+        self.test_hazed_img, _ = self.test_set.next_batch()
+        # self.test_hazed_img = self.data_x[0:self.batch_size]
 
         # saver to save model
         self.saver = tf.train.Saver()
@@ -235,7 +240,7 @@ class CGAN(object):
 
             # get batch data
             for idx in range(start_batch_id, self.num_batches):
-                batch_hazed_img, batch_ground_truth = next_batch()
+                batch_hazed_img, batch_ground_truth = self.train_set.next_batch()
                 #batch_hazed_img# self.data_X[idx * self.batch_size:(idx + 1) * self.batch_size]
                 #batch_ground_truth = # self.data_y[idx * self.batch_size:(idx + 1) * self.batch_size]
                 batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]).astype(np.float32)
