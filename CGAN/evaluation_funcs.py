@@ -21,4 +21,3 @@ def UQI(origin, recovered):
     cov = np.cov(ori, rec, ddof=1)
 
     return 4 * cov[0][1] * mean_ori * mean_rec / ((std_ori*std_ori + std_rec*std_rec) * (mean_ori**2 + mean_rec**2))
-

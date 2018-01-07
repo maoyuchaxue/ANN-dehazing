@@ -39,8 +39,8 @@ img_file = open("./images.csv", "r")
 # TOT_DATA = 2248
 # REPEAT_TIMES = 5;
 
-TOT_DATA = 4
-REPEAT_TIMES = 1
+TOT_DATA = 2248
+REPEAT_TIMES = 2
 
 tot = 0
 for i in range(TOT_DATA):

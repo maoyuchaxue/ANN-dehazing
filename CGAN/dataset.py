@@ -55,4 +55,3 @@ if __name__ == "__main__":
     for i in range(10):
         hazed_img, original_img = dataset.next_batch()
         print(hazed_img.shape, original_img.shape)
-    
