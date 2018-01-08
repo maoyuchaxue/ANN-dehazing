@@ -15,12 +15,13 @@ else:
 
 
 class CGAN(object):
-    def __init__(self, sess, batch_size, z_dim, learning_rate, lambda_d, lambda_p):
+    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, result_dir, log_dir, learning_rate=0.001, lambda_d=150, lambda_p=150):
         self.sess = sess
         self.batch_size = batch_size
         self.z_dim = z_dim # dimension of noise vector
         self.learning_rate = learning_rate
-        self.lambda_p
+        self.lambda_p = lambda_p
+        self.lambda_d = lambda_d
         self.beta1 = 0.5 # ???
         self.input_height = 480
         self.input_weight = 640
@@ -33,6 +34,8 @@ class CGAN(object):
         self.num_batches = self.train_set.total_batches
 
     def Conv_BN_PReLu(self, network, input_channel, output_channel, scope, reuse, is_training, kernel_size=3):
+        input_channel = int(input_channel)
+        output_channel = int(output_channel)
         with tf.variable_scope(scope, reuse=reuse):
             network = tl.layers.Conv2dLayer(network,
                                 shape=[kernel_size, kernel_size, input_channel, output_channel],
@@ -42,14 +45,16 @@ class CGAN(object):
                                 b_init=tf.constant_initializer(value=0.0),
                                 name=scope+'/conv')
             network = tl.layers.BatchNormLayer(network, is_train=is_training, name=scope+'/bn')
-            network = tl.layers.PReluLayer(network, a_init=0.2, channel_shared=True, name=scope+'/pReLu')
+            network = tl.layers.PReluLayer(network, a_init=tf.constant_initializer(value=0.2), channel_shared=True, name=scope+'/pReLu')
             return network
 
     def DeConv_BN_ReLu(self, network, input_channel, output_channel, scope, reuse, is_training, kernel_size=3):
+        input_channel = int(input_channel)
+        output_channel = int(output_channel)
         with tf.variable_scope(scope, reuse=reuse):
             network = tl.layers.DeConv2dLayer(network,
-                                              shape=[kernel_size, kernel_size, input_channel, output_channel],
-                                              output_shape=[-1, network.outputs._shape[1], network.outputs._shape[2], output_channel],
+                                              shape=[kernel_size, kernel_size, output_channel, input_channel],
+                                              output_shape=[network.outputs.get_shape().as_list()[0], network.outputs.get_shape().as_list()[1], network.outputs.get_shape().as_list()[2], output_channel],
                                               strides=[1, 1, 1, 1],
                                               padding='SAME',
                                               W_init=tf.truncated_normal_initializer(stddev=0.02),
@@ -58,7 +63,7 @@ class CGAN(object):
             network = tl.layers.BatchNormLayer(network, act=tf.nn.relu, is_train=is_training, name=scope+'/bn')
             return network
 
-    def discriminator(self, x, y, ndf, is_training=True, reuse=False):
+    def discriminator(self, x, y, ndf=48, is_training=True, reuse=False):
         with tf.variable_scope("discriminator", reuse=reuse):
 
             # merge image and label
@@ -79,7 +84,7 @@ class CGAN(object):
             y = concat([x, y], 3)
             Input = tl.layers.InputLayer(y, "DInput")
             CB_K = tl.layers.Conv2dLayer(Input,
-                                        shape=[3, 3, 3, ndf],
+                                        shape=[3, 3, 6, ndf],
                                         strides=[1, 1, 1, 1],
                                         padding='SAME',
                                         W_init=tf.truncated_normal_initializer(stddev=0.02),
@@ -97,9 +102,9 @@ class CGAN(object):
                                         b_init=tf.constant_initializer(value=0.0),
                                         name='Conv_1')
             out = tf.nn.sigmoid(Conv_1.outputs)
-            return out
+            return out, Conv_1.outputs, Conv_1
 
-    def generator(self, z, x, ngf, is_training=True, reuse=False):
+    def generator(self, z, x, ngf=64, is_training=True, reuse=False):
         with tf.variable_scope("generator", reuse=reuse):
             # merge noise and label
             '''
@@ -119,21 +124,21 @@ class CGAN(object):
             #z = concat([z, x], 1)
 
             Input = tl.layers.InputLayer(x, "GInput")
-            G_CBP_K1 = self.Conv_BN_PReLu(Input, 3, ngf, "G_CBP(K)_1", reuse, is_training)
-            G_CBP_K2 = self.Conv_BN_PReLu(G_CBP_K1, ngf, ngf, "G_CBP(K)_2", reuse, is_training)
-            G_CBP_K3 = self.Conv_BN_PReLu(G_CBP_K2, ngf, ngf, "G_CBP(K)_3", reuse, is_training)
-            G_CBP_K4 = self.Conv_BN_PReLu(G_CBP_K3, ngf, ngf, "G_CBP(K)_4", reuse, is_training)
-            G_CBP_K_div_2 = self.Conv_BN_PReLu(G_CBP_K4, ngf, ngf / 2, "G_CBP(K/2)", reuse, is_training)
-            G_CBP_1 = self.Conv_BN_PReLu(G_CBP_K_div_2, ngf / 2, 1, "G_CBP(1)", reuse, is_training)
-            G_DBR_K_div_2 = self.DeConv_BN_ReLu(G_CBP_1, 1, ngf / 2, "G_DBR(K/2)", reuse, is_training)
-            G_DBR_K1 = self.DeConv_BN_ReLu(G_DBR_K_div_2, ngf / 2, ngf, "G_DBR(K)_1", reuse, is_training)
+            G_CBP_K1 = self.Conv_BN_PReLu(Input, 3, ngf, "G_CBPK_1", reuse, is_training)
+            G_CBP_K2 = self.Conv_BN_PReLu(G_CBP_K1, ngf, ngf, "G_CBPK_2", reuse, is_training)
+            G_CBP_K3 = self.Conv_BN_PReLu(G_CBP_K2, ngf, ngf, "G_CBPK_3", reuse, is_training)
+            G_CBP_K4 = self.Conv_BN_PReLu(G_CBP_K3, ngf, ngf, "G_CBPK_4", reuse, is_training)
+            G_CBP_K_div_2 = self.Conv_BN_PReLu(G_CBP_K4, ngf, ngf / 2, "G_CBPK/2", reuse, is_training)
+            G_CBP_1 = self.Conv_BN_PReLu(G_CBP_K_div_2, ngf / 2, 1, "G_CBP1", reuse, is_training)
+            G_DBR_K_div_2 = self.DeConv_BN_ReLu(G_CBP_1, 1, ngf / 2, "G_DBRK/2", reuse, is_training)
+            G_DBR_K1 = self.DeConv_BN_ReLu(G_DBR_K_div_2, ngf / 2, ngf, "G_DBRK_1", reuse, is_training)
             G_DBR_K1.outputs = G_DBR_K1.outputs + G_CBP_K4.outputs
-            G_DBR_K2 = self.DeConv_BN_ReLu(G_DBR_K1, ngf, ngf, "G_DBR(K)_2", reuse, is_training)
-            G_DBR_K3 = self.DeConv_BN_ReLu(G_DBR_K2, ngf, ngf, "G_DBR(K)_3", reuse, is_training)
+            G_DBR_K2 = self.DeConv_BN_ReLu(G_DBR_K1, ngf, ngf, "G_DBRK_2", reuse, is_training)
+            G_DBR_K3 = self.DeConv_BN_ReLu(G_DBR_K2, ngf, ngf, "G_DBRK_3", reuse, is_training)
             G_DBR_K3.outputs = G_DBR_K3.outputs + G_CBP_K2.outputs
-            G_DBR_K4 = self.DeConv_BN_ReLu(G_DBR_K3, ngf, ngf, "G_DBR(K)_4", reuse, is_training)
-            G_DBR_3 = self.DeConv_BN_ReLu(G_DBR_K4, ngf, 3, "G_DBR(3)", reuse, is_training)
-            G_DBR_3.outputs = G_DBR_3.outputs + z
+            G_DBR_K4 = self.DeConv_BN_ReLu(G_DBR_K3, ngf, ngf, "G_DBRK_4", reuse, is_training)
+            G_DBR_3 = self.DeConv_BN_ReLu(G_DBR_K4, ngf, 3, "G_DBR3", reuse, is_training)
+            G_DBR_3.outputs = G_DBR_3.outputs + x
             out = tf.nn.tanh(G_DBR_3.outputs, name="out")
             return out
 
@@ -152,10 +157,10 @@ class CGAN(object):
         #D_fake, D_fake_logits, _  = self.discriminator(G, self.x, is_training=True, reuse=True) # reuse = True????
         
         # Euclidean Loss
-        euclidean_loss = tf.reduce_mean(tf.square(y - G))
+        euclidean_loss = tf.reduce_mean(tf.square(self.y - G))
         # Perceptual Loss
         vgg_y = vgg16.Vgg16()
-        vgg_y.build(y)
+        vgg_y.build(self.y)
         vgg_G = vgg16.Vgg16()
         vgg_G.build(G)
         perceptual_loss = tf.reduce_mean(tf.square(vgg_y.conv2_2-vgg_G.conv2_2))

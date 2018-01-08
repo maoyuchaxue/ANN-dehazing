@@ -22,13 +22,13 @@ def parse_args():
 """checking arguments"""
 def check_args(args):
     # --checkpoint_dir
-    check_folder(args.checkpoint_dir)
+#    check_folder(args.checkpoint_dir)
 
     # --result_dir
-    check_folder(args.result_dir)
+ #   check_folder(args.result_dir)
 
     # --result_dir
-    check_folder(args.log_dir)
+  #  check_folder(args.log_dir)
 
     # --epoch
     assert args.epoch >= 1, 'number of epochs must be larger than or equal to one'
@@ -50,11 +50,10 @@ def main():
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
         # declare instance for GAN
 
-        gan = model(sess,
+        gan = CGAN(sess,
                 epoch=args.epoch,
                 batch_size=args.batch_size,
                 z_dim=args.z_dim,
-                dataset_name=args.dataset,
                 checkpoint_dir=args.checkpoint_dir,
                 result_dir=args.result_dir,
                 log_dir=args.log_dir)
