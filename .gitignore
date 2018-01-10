@@ -7,3 +7,5 @@
 *.pyc
 *.bmp
 *.swp
+logs
+results

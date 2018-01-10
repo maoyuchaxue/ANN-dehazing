@@ -1,5 +1,6 @@
 import tensorflow as tf
 import tensorlayer as tl
+import os
 import math
 import numpy as np
 import vgg16
