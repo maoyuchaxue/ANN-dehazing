@@ -17,6 +17,8 @@ def parse_args():
                         help='Directory name to save the generated images')
     parser.add_argument('--log_dir', type=str, default='logs',
                         help='Directory name to save training logs')
+    parser.add_argument('--model_name', type=str, default='default',
+                        help='Current model name')
     return check_args(parser.parse_args())
 
 """checking arguments"""
@@ -56,7 +58,8 @@ def main():
                 z_dim=args.z_dim,
                 checkpoint_dir=args.checkpoint_dir,
                 result_dir=args.result_dir,
-                log_dir=args.log_dir)
+                log_dir=args.log_dir,
+                model_name=args.model_name)
 
         # build graph
         gan.build_model()

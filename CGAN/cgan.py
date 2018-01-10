@@ -15,7 +15,7 @@ else:
 
 
 class CGAN(object):
-    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, result_dir, log_dir, learning_rate=0.001, lambda_d=150, lambda_p=150):
+    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, result_dir, log_dir, learning_rate=0.001, lambda_d=150, lambda_p=150):
         self.sess = sess
         self.batch_size = batch_size
         self.z_dim = z_dim # dimension of noise vector
@@ -26,6 +26,7 @@ class CGAN(object):
         self.input_height = 224
         self.input_weight = 224
         self.input_channel = 3
+        self.model_name = model_name
 
         self.test_set = DataSet("../data/testset", self.batch_size)
         self.train_set = DataSet("../data/output", self.batch_size)
@@ -122,6 +123,7 @@ class CGAN(object):
             return out
         '''
             #z = concat([z, x], 1)
+            tl.layers.set_name_reuse(reuse)
 
             Input = tl.layers.InputLayer(x, "GInput")
             G_CBP_K1 = self.Conv_BN_PReLu(Input, 3, ngf, "G_CBPK_1", reuse, is_training)
@@ -207,7 +209,7 @@ class CGAN(object):
         '''
         p_loss_sum = tf.summary.scalar("p_loss", perceptual_loss)
         e_loss_sum = tf.summary.scalar("e_loss", euclidean_loss)
-        d_loss_real_summ = tf.summary.scalar("d_loss_real", d_loss_real)
+        d_loss_real_sum = tf.summary.scalar("d_loss_real", d_loss_real)
         self.sum = tf.summary.merge([p_loss_sum, e_loss_sum, d_loss_real_sum]) 
 
     def train(self):
