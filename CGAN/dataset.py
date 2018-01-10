@@ -29,9 +29,9 @@ class DataSet(object):
         img_data = cv2.imread(image_path)
         height, weight, channels = img_data.shape
 
-        dif = (weight/2 - height) / 2
-        original_img_large = img_data[0:height, dif:(weight/2-dif), 0:channels]
-        hazed_img_large = img_data[0:height, (weight/2+dif):(weight-dif), 0:channels]
+        dif = (weight//2 - height) // 2
+        original_img_large = img_data[0:height, dif:(weight//2-dif), 0:channels]
+        hazed_img_large = img_data[0:height, (weight//2+dif):(weight-dif), 0:channels]
         # print original_img_large.shape, hazed_img_large.shape
 
         original_img = cv2.resize(original_img_large, (self.DATA_SIZE, self.DATA_SIZE))
@@ -46,7 +46,7 @@ class DataSet(object):
         array_hazed_img = []
         array_original_img = []
         for i in range(self.cur_index, self.end_index):
-            print(self.image_list[i])
+            # print(self.image_list[i])
             original_img, hazed_img = self.read_image(self.image_list[i])
 
             array_hazed_img.append(hazed_img)
