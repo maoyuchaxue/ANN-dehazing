@@ -8,4 +8,6 @@
 *.bmp
 *.swp
 logs
+checkpoint
+result.txt
 results

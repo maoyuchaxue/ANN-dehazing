@@ -6,7 +6,7 @@ import math
 import numpy as np
 import vgg16
 from dataset import DataSet
-
+from utils import *
 if "concat_v2" in dir(tf):
     def concat(tensors, axis, *args, **kwargs):
         return tf.concat_v2(tensors, axis, *args, **kwargs)
@@ -14,10 +14,8 @@ else:
     def concat(tensors, axis, *args, **kwargs):
         return tf.concat(tensors, axis, *args, **kwargs)
 
-
-
 class CGAN(object):
-    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.001, lambda_d=150, lambda_p=150):
+    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.002, lambda_d=1000, lambda_p=1e-11, lambda_e=1e-5):
         self.sess = sess
         self.epoch = epoch
         self.batch_size = batch_size
@@ -25,6 +23,7 @@ class CGAN(object):
         self.learning_rate = learning_rate
         self.lambda_p = lambda_p
         self.lambda_d = lambda_d
+        self.lambda_e = lambda_e
         self.beta1 = 0.5 # ???
         self.input_height = 224
         self.input_weight = 224
@@ -165,18 +164,20 @@ class CGAN(object):
         #D_fake, D_fake_logits, _  = self.discriminator(G, self.x, is_training=True, reuse=True) # reuse = True????
         
         # Euclidean Loss
-        self.euclidean_loss = tf.reduce_mean(tf.square(self.y - G))
+        self.e_loss = tf.reduce_mean(tf.square(self.y - G))
         # Perceptual Loss
         vgg_y = vgg16.Vgg16()
         vgg_y.build(self.y)
         vgg_G = vgg16.Vgg16()
         vgg_G.build(G)
-        self.perceptual_loss = tf.reduce_mean(tf.square(vgg_y.conv2_2-vgg_G.conv2_2))
+        self.p_loss = tf.reduce_mean(tf.square(vgg_y.conv2_2 - vgg_G.conv2_2))
         # Discriminator Loss
-        self.d_loss_real = -tf.reduce_mean(D_real)
+        self.d_loss_real = -tf.reduce_mean(tf.log(D_real))
+        print("########### p ", self.p_loss.get_shape())
+        print("########### e ", self.e_loss.get_shape())
+        self.loss = self.lambda_e * self.e_loss + self.lambda_p * self.p_loss + self.lambda_d * self.d_loss_real
 
-        self.loss = self.euclidean_loss + self.lambda_d * self.d_loss_real + self.lambda_p * self.perceptual_loss
-
+        # self.loss = self.euclidean_loss + self.lambda_d * self.d_loss_real + self.lambda_p * self.perceptual_loss
 
         # TODO: Perceptual Loss
         # self.d_loss =
@@ -213,8 +214,8 @@ class CGAN(object):
         self.g_sum = tf.summary.merge([d_loss_fake_sum, g_loss_sum])
         self.d_sum = tf.summary.merge([d_loss_real_sum, d_loss_sum])
         '''
-        p_loss_sum = tf.summary.scalar("p_loss", self.perceptual_loss)
-        e_loss_sum = tf.summary.scalar("e_loss", self.euclidean_loss)
+        p_loss_sum = tf.summary.scalar("p_loss", self.p_loss)
+        e_loss_sum = tf.summary.scalar("e_loss", self.e_loss)
         d_loss_real_sum = tf.summary.scalar("d_loss_real", self.d_loss_real)
         self.sum = tf.summary.merge([p_loss_sum, e_loss_sum, d_loss_real_sum]) 
 
@@ -269,25 +270,29 @@ class CGAN(object):
                                                        feed_dict={self.x: batch_hazed_img, self.z: batch_z})
                 self.writer.add_summary(summary_str, counter)
                 '''
-                _, summary_str, loss = self.sess.run([self.optim, self.sum, self.loss],
+                _, summary_str, loss, e_loss, p_loss, d_loss_real = self.sess.run([self.optim, self.sum, self.loss, self.e_loss, self.p_loss, self.d_loss_real],
                                                        feed_dict={self.x: batch_hazed_img, self.y: batch_ground_truth, self.z: batch_z})
                 self.writer.add_summary(summary_str, counter)
                 # display training status
                 counter += 1
-                print("Epoch: [%2d] [%4d/%4d] time: %4.4f, loss: %.8f" \
-                      % (epoch, idx, self.num_batches, time.time() - start_time, loss))
+                print("Epoch: [%2d] [%4d/%4d] time: %4.4f, loss: %.8f, e_loss:%.8f, p_loss:%.8f, d_loss_real:%.8f" \
+                      % (epoch, idx, self.num_batches, time.time() - start_time, loss, e_loss, p_loss, d_loss_real))
+                #print(vgg_y)
+                #print(vgg_G)
 
                 # save training results for every 300 steps
-                if np.mod(counter, 300) == 0:
+                if np.mod(counter, 40) == 0:
                     samples = self.sess.run(self.fake_images,
                                             feed_dict={self.z: self.sample_z, self.x: self.test_hazed_img})
-                    tot_num_samples = min(self.sample_num, self.batch_size)
+                    tot_num_samples = self.batch_size
                     manifold_h = int(np.floor(np.sqrt(tot_num_samples)))
                     manifold_w = int(np.floor(np.sqrt(tot_num_samples)))
                     save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
                                 './' + check_folder(self.result_dir + '/' + self.model_dir) + '/' + self.model_name + '_train_{:02d}_{:04d}.png'.format(
                                     epoch, idx))
 
+                if np.mod(counter, 20) == 0:
+                    self.save(self.checkpoint_dir, counter)
             # After an epoch, start_batch_id is set to zero
             # non-zero value is only for the first epoch after loading pre-trained model
             start_batch_id = 0
@@ -319,7 +324,7 @@ class CGAN(object):
     
     def save(self, checkpoint_dir, step):
         checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir, self.model_name)
-
+        print("[*] Saving model at " + checkpoint_dir)
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
 
