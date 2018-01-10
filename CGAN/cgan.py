@@ -23,8 +23,8 @@ class CGAN(object):
         self.lambda_p = lambda_p
         self.lambda_d = lambda_d
         self.beta1 = 0.5 # ???
-        self.input_height = 480
-        self.input_weight = 640
+        self.input_height = 224
+        self.input_weight = 224
         self.input_channel = 3
 
         self.test_set = DataSet("../data/testset", self.batch_size)
