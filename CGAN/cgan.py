@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorlayer as tl
 import os
+import time
 import math
 import numpy as np
 import vgg16
@@ -18,6 +19,7 @@ else:
 class CGAN(object):
     def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.001, lambda_d=150, lambda_p=150):
         self.sess = sess
+        self.epoch = epoch
         self.batch_size = batch_size
         self.z_dim = z_dim # dimension of noise vector
         self.learning_rate = learning_rate
@@ -268,7 +270,7 @@ class CGAN(object):
                 self.writer.add_summary(summary_str, counter)
                 '''
                 _, summary_str, loss = self.sess.run([self.optim, self.sum, self.loss],
-                                                       feed_dict={self.x: batch_hazed_img, self.z: batch_z})
+                                                       feed_dict={self.x: batch_hazed_img, self.y: batch_ground_truth, self.z: batch_z})
                 self.writer.add_summary(summary_str, counter)
                 # display training status
                 counter += 1
@@ -325,4 +327,3 @@ class CGAN(object):
 
     def save_images(images, size, image_path):
         return imsave(inverse_transform(images), size, image_path)
-        
