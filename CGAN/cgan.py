@@ -16,7 +16,7 @@ else:
 
 
 class CGAN(object):
-    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, result_dir, log_dir, learning_rate=0.001, lambda_d=150, lambda_p=150):
+    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.001, lambda_d=150, lambda_p=150):
         self.sess = sess
         self.batch_size = batch_size
         self.z_dim = z_dim # dimension of noise vector
@@ -32,6 +32,7 @@ class CGAN(object):
         self.log_dir = log_dir
         self.result_dir = result_dir
         self.checkpoint_dir = checkpoint_dir
+        self.model_dir = model_dir
         self.test_set = DataSet("../data/testset", self.batch_size)
         self.train_set = DataSet("../data/output", self.batch_size)
         # self.data_X, self.data_Y = load_data()

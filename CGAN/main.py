@@ -19,6 +19,8 @@ def parse_args():
                         help='Directory name to save training logs')
     parser.add_argument('--model_name', type=str, default='default',
                         help='Current model name')
+    parser.add_argument('--model_dir', type=str, default='models',
+                        help='Directory name to save models')
     return check_args(parser.parse_args())
 
 """checking arguments"""
@@ -59,7 +61,8 @@ def main():
                 checkpoint_dir=args.checkpoint_dir,
                 result_dir=args.result_dir,
                 log_dir=args.log_dir,
-                model_name=args.model_name)
+                model_name=args.model_name,
+                model_dir=args.model_dir)
 
         # build graph
         gan.build_model()
