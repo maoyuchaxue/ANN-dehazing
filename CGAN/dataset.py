@@ -5,6 +5,7 @@ import random
 
 class DataSet(object):
     def __init__(self, data_dir, batch_size, max_size=-1):
+        self.DATA_SIZE = 224
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.max_size = max_size
@@ -27,7 +28,15 @@ class DataSet(object):
         image_path = os.path.join(self.data_dir, image_name)
         img_data = cv2.imread(image_path)
         height, weight, channels = img_data.shape
-        return img_data[0:height, 0:weight/2, 0:channels], img_data[0:height, weight/2:weight, 0:channels]
+
+        dif = (weight/2 - height) / 2
+        original_img_large = img_data[0:height, dif:(weight/2-dif), 0:channels]
+        hazed_img_large = img_data[0:height, (weight/2+dif):(weight-dif), 0:channels]
+        # print original_img_large.shape, hazed_img_large.shape
+
+        original_img = cv2.resize(original_img_large, (self.DATA_SIZE, self.DATA_SIZE))
+        hazed_img = cv2.resize(hazed_img_large, (self.DATA_SIZE, self.DATA_SIZE))
+        return original_img, hazed_img 
 
     def shuffle_data(self):
         random.shuffle(self.image_list)
