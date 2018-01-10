@@ -65,14 +65,14 @@ def main():
         gan.build_model()
 
         # show network architecture
-        show_all_variables()
+        # show_all_variables()
 
         # launch the graph in a session
         gan.train()
         print(" [*] Training finished!")
 
         # visualize learned generator
-        gan.visualize_results(args.epoch-1)
+        # gan.visualize_results(args.epoch-1)
         print(" [*] Testing finished!")
 
 if __name__ == '__main__':

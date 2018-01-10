@@ -28,6 +28,9 @@ class CGAN(object):
         self.input_channel = 3
         self.model_name = model_name
 
+        self.log_dir = log_dir
+        self.result_dir = result_dir
+        self.checkpoint_dir = checkpoint_dir
         self.test_set = DataSet("../data/testset", self.batch_size)
         self.train_set = DataSet("../data/output", self.batch_size)
         # self.data_X, self.data_Y = load_data()
@@ -124,7 +127,6 @@ class CGAN(object):
         '''
             #z = concat([z, x], 1)
             tl.layers.set_name_reuse(reuse)
-
             Input = tl.layers.InputLayer(x, "GInput")
             G_CBP_K1 = self.Conv_BN_PReLu(Input, 3, ngf, "G_CBPK_1", reuse, is_training)
             G_CBP_K2 = self.Conv_BN_PReLu(G_CBP_K1, ngf, ngf, "G_CBPK_2", reuse, is_training)
@@ -159,15 +161,15 @@ class CGAN(object):
         #D_fake, D_fake_logits, _  = self.discriminator(G, self.x, is_training=True, reuse=True) # reuse = True????
         
         # Euclidean Loss
-        euclidean_loss = tf.reduce_mean(tf.square(self.y - G))
+        self.euclidean_loss = tf.reduce_mean(tf.square(self.y - G))
         # Perceptual Loss
         vgg_y = vgg16.Vgg16()
         vgg_y.build(self.y)
         vgg_G = vgg16.Vgg16()
         vgg_G.build(G)
-        perceptual_loss = tf.reduce_mean(tf.square(vgg_y.conv2_2-vgg_G.conv2_2))
+        self.perceptual_loss = tf.reduce_mean(tf.square(vgg_y.conv2_2-vgg_G.conv2_2))
         # Discriminator Loss
-        d_loss_real = -tf.reduce_mean(D_real)
+        self.d_loss_real = -tf.reduce_mean(D_real)
 
         self.loss = self.euclidean_loss + self.lambda_d * self.d_loss_real + self.lambda_p * self.perceptual_loss
 
@@ -207,9 +209,9 @@ class CGAN(object):
         self.g_sum = tf.summary.merge([d_loss_fake_sum, g_loss_sum])
         self.d_sum = tf.summary.merge([d_loss_real_sum, d_loss_sum])
         '''
-        p_loss_sum = tf.summary.scalar("p_loss", perceptual_loss)
-        e_loss_sum = tf.summary.scalar("e_loss", euclidean_loss)
-        d_loss_real_sum = tf.summary.scalar("d_loss_real", d_loss_real)
+        p_loss_sum = tf.summary.scalar("p_loss", self.perceptual_loss)
+        e_loss_sum = tf.summary.scalar("e_loss", self.euclidean_loss)
+        d_loss_real_sum = tf.summary.scalar("d_loss_real", self.d_loss_real)
         self.sum = tf.summary.merge([p_loss_sum, e_loss_sum, d_loss_real_sum]) 
 
     def train(self):
