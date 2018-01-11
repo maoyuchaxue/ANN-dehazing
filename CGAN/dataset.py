@@ -34,8 +34,8 @@ class DataSet(object):
         hazed_img_large = img_data[0:height, (weight//2+dif):(weight-dif), 0:channels]
         # print original_img_large.shape, hazed_img_large.shape
 
-        original_img = cv2.resize(original_img_large, (self.DATA_SIZE, self.DATA_SIZE))
-        hazed_img = cv2.resize(hazed_img_large, (self.DATA_SIZE, self.DATA_SIZE))
+        original_img = cv2.resize(original_img_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
+        hazed_img = cv2.resize(hazed_img_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
         return original_img, hazed_img 
 
     def shuffle_data(self):

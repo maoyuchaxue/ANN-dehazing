@@ -15,7 +15,7 @@ else:
         return tf.concat(tensors, axis, *args, **kwargs)
 
 class CGAN(object):
-    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.002, lambda_d=1000, lambda_p=1e-11, lambda_e=1e-5):
+    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.002, lambda_d=1, lambda_p=1e-4, lambda_e=1):
         self.sess = sess
         self.epoch = epoch
         self.batch_size = batch_size
@@ -283,7 +283,7 @@ class CGAN(object):
                 # save training results for every 300 steps
                 if np.mod(counter, 40) == 0:
                     samples = self.sess.run(self.fake_images,
-                                            feed_dict={self.z: self.sample_z, self.x: self.test_hazed_img})
+                                            feed_dict={self.z: batch_z, self.x: batch_hazed_img})
                     tot_num_samples = self.batch_size
                     manifold_h = int(np.floor(np.sqrt(tot_num_samples)))
                     manifold_w = int(np.floor(np.sqrt(tot_num_samples)))
@@ -291,14 +291,14 @@ class CGAN(object):
                                 './' + check_folder(self.result_dir + '/' + self.model_dir) + '/' + self.model_name + '_train_{:02d}_{:04d}.png'.format(
                                     epoch, idx))
 
-                if np.mod(counter, 20) == 0:
+                if np.mod(counter, 500) == 0:
                     self.save(self.checkpoint_dir, counter)
             # After an epoch, start_batch_id is set to zero
             # non-zero value is only for the first epoch after loading pre-trained model
             start_batch_id = 0
 
             # save model
-            self.save(self.checkpoint_dir, counter)
+            # self.save(self.checkpoint_dir, counter)
 
             # show temporal results
             # self.visualize_results(epoch)

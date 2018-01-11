@@ -44,5 +44,5 @@ def check_folder(log_dir):
     return log_dir
 
 def save_images(images, size, image_path):
-    return imsave(inverse_transform(images), size, image_path)
+    return imsave(images, size, image_path)
 
