@@ -159,7 +159,7 @@ class CGAN(object):
         self.z = tf.placeholder(tf.float32, [self.batch_size, self.z_dim], name='z')
         # Conditional GAN
         D_real, D_real_logits, _ = self.discriminator(self.y, self.x, is_training=True, reuse=False)
-        G = self.generator(self.z, self.y, is_training=True, reuse=False)
+        G = self.generator(self.z, self.x, is_training=True, reuse=False)
         D_fake, D_fake_logits, _ = self.discriminator(G, self.x, is_training=True, reuse=True)
         # ===== D loss =====
         d_loss_real = tf.reduce_mean(
