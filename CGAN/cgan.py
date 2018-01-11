@@ -169,17 +169,17 @@ class CGAN(object):
         self.d_loss = d_loss_real + d_loss_fake
         # ===== G loss =====
         # Euclidean Loss
-        self.e_loss = tf.reduce_mean(tf.square(self.y - G))
+        self.g_e_loss = tf.reduce_mean(tf.square(self.y - G))
         # Perceptual Loss
         vgg_y = vgg16.Vgg16()
         vgg_y.build(self.y)
         vgg_G = vgg16.Vgg16()
         vgg_G.build(G)
-        self.p_loss = tf.reduce_mean(tf.square(vgg_y.conv2_2 - vgg_G.conv2_2))
+        self.g_p_loss = tf.reduce_mean(tf.square(vgg_y.conv2_2 - vgg_G.conv2_2))
         # Discriminator Loss
         self.g_loss_from_d = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake_logits, labels=tf.ones_like(D_fake)))
-        self.g_loss = self.lambda_e * self.e_loss + self.lambda_p * self.p_loss + self.lambda_d * self.g_loss_from_d
+        self.g_loss = self.lambda_e * self.g_e_loss + self.lambda_p * self.g_p_loss + self.lambda_d * self.g_loss_from_d
 
         """ Training """
         # divide trainable variables into a group for D and a group for G
@@ -199,8 +199,8 @@ class CGAN(object):
         d_loss_fake_sum = tf.summary.scalar("d_loss_fake", d_loss_fake)
         d_loss_sum = tf.summary.scalar("d_loss", self.d_loss)
 
-        p_loss_sum = tf.summary.scalar("p_loss", self.p_loss)
-        e_loss_sum = tf.summary.scalar("e_loss", self.e_loss)
+        p_loss_sum = tf.summary.scalar("p_loss", self.g_p_loss)
+        e_loss_sum = tf.summary.scalar("e_loss", self.g_e_loss)
         g_loss_from_d_sum = tf.summary.scalar("g_loss_from_d", self.g_loss_from_d)
         g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
 
@@ -260,8 +260,8 @@ class CGAN(object):
                 
                 # display training status
                 counter += 1
-                print("Epoch: [%2d] [%4d/%4d] time: %4.4f, loss: %.8f, e_loss:%.8f, p_loss:%.8f, d_loss_real:%.8f" \
-                      % (epoch, idx, self.num_batches, time.time() - start_time, loss, e_loss, p_loss, d_loss_real))
+                print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss:%.8f" \
+                      % (epoch, idx, self.num_batches, time.time() - start_time, d_loss, g_loss))
                 #print(vgg_y)
                 #print(vgg_G)
 
