@@ -89,26 +89,26 @@ class CGAN(object):
             return out, out_logit, net
             '''
             y = concat([x, y], 3)
-            Input = tl.layers.InputLayer(y, "DInput")
+            Input = tl.layers.InputLayer(y, "d_Input")
             CB_K = tl.layers.Conv2dLayer(Input,
                                         shape=[3, 3, 6, ndf],
                                         strides=[1, 1, 1, 1],
                                         padding='SAME',
                                         W_init=tf.truncated_normal_initializer(stddev=0.02),
                                         b_init=tf.constant_initializer(value=0.0),
-                                        name='CB_K')
-            CB_K = tl.layers.BatchNormLayer(CB_K, is_train=is_training, name="CB_K_BN")
-            CBP_2K = self.Conv_BN_PReLu(CB_K, ndf, 2 * ndf, "CBP_2K", reuse, is_training)
-            CBP_4K = self.Conv_BN_PReLu(CBP_2K, 2 * ndf, 4 * ndf, "CBP_4K", reuse, is_training)
-            CBP_8K = self.Conv_BN_PReLu(CBP_4K, 4 * ndf, 8 * ndf, "CBP_8K", reuse, is_training)
+                                        name='d_CB_K')
+            CB_K = tl.layers.BatchNormLayer(CB_K, is_train=is_training, name="d_CB_K_BN")
+            CBP_2K = self.Conv_BN_PReLu(CB_K, ndf, 2 * ndf, "d_CBP_2K", reuse, is_training)
+            CBP_4K = self.Conv_BN_PReLu(CBP_2K, 2 * ndf, 4 * ndf, "d_CBP_4K", reuse, is_training)
+            CBP_8K = self.Conv_BN_PReLu(CBP_4K, 4 * ndf, 8 * ndf, "d_CBP_8K", reuse, is_training)
             Conv_1 = tl.layers.Conv2dLayer(CBP_8K,
                                         shape=[3, 3, 8 * ndf, 1],
                                         strides=[1, 1, 1, 1],
                                         padding='SAME',
                                         W_init=tf.truncated_normal_initializer(stddev=0.02),
                                         b_init=tf.constant_initializer(value=0.0),
-                                        name='Conv_1')
-            out = tf.nn.sigmoid(Conv_1.outputs)
+                                        name='d_Conv_1')
+            out = tf.nn.sigmoid(Conv_1.outputs, name = "d_out")
             return out, Conv_1.outputs, Conv_1
 
     def generator(self, z, x, ngf=64, is_training=True, reuse=False):
@@ -130,23 +130,23 @@ class CGAN(object):
         '''
             #z = concat([z, x], 1)
             tl.layers.set_name_reuse(reuse)
-            Input = tl.layers.InputLayer(x, "GInput")
-            G_CBP_K1 = self.Conv_BN_PReLu(Input, 3, ngf, "G_CBPK_1", reuse, is_training)
-            G_CBP_K2 = self.Conv_BN_PReLu(G_CBP_K1, ngf, ngf, "G_CBPK_2", reuse, is_training)
-            G_CBP_K3 = self.Conv_BN_PReLu(G_CBP_K2, ngf, ngf, "G_CBPK_3", reuse, is_training)
-            G_CBP_K4 = self.Conv_BN_PReLu(G_CBP_K3, ngf, ngf, "G_CBPK_4", reuse, is_training)
-            G_CBP_K_div_2 = self.Conv_BN_PReLu(G_CBP_K4, ngf, ngf / 2, "G_CBPK/2", reuse, is_training)
-            G_CBP_1 = self.Conv_BN_PReLu(G_CBP_K_div_2, ngf / 2, 1, "G_CBP1", reuse, is_training)
-            G_DBR_K_div_2 = self.DeConv_BN_ReLu(G_CBP_1, 1, ngf / 2, "G_DBRK/2", reuse, is_training)
-            G_DBR_K1 = self.DeConv_BN_ReLu(G_DBR_K_div_2, ngf / 2, ngf, "G_DBRK_1", reuse, is_training)
+            Input = tl.layers.InputLayer(x, "g_Input")
+            G_CBP_K1 = self.Conv_BN_PReLu(Input, 3, ngf, "g_CBPK_1", reuse, is_training)
+            G_CBP_K2 = self.Conv_BN_PReLu(G_CBP_K1, ngf, ngf, "g_CBPK_2", reuse, is_training)
+            G_CBP_K3 = self.Conv_BN_PReLu(G_CBP_K2, ngf, ngf, "g_CBPK_3", reuse, is_training)
+            G_CBP_K4 = self.Conv_BN_PReLu(G_CBP_K3, ngf, ngf, "g_CBPK_4", reuse, is_training)
+            G_CBP_K_div_2 = self.Conv_BN_PReLu(G_CBP_K4, ngf, ngf / 2, "g_CBPK/2", reuse, is_training)
+            G_CBP_1 = self.Conv_BN_PReLu(G_CBP_K_div_2, ngf / 2, 1, "g_CBP1", reuse, is_training)
+            G_DBR_K_div_2 = self.DeConv_BN_ReLu(G_CBP_1, 1, ngf / 2, "g_DBRK/2", reuse, is_training)
+            G_DBR_K1 = self.DeConv_BN_ReLu(G_DBR_K_div_2, ngf / 2, ngf, "g_DBRK_1", reuse, is_training)
             G_DBR_K1.outputs = G_DBR_K1.outputs + G_CBP_K4.outputs
-            G_DBR_K2 = self.DeConv_BN_ReLu(G_DBR_K1, ngf, ngf, "G_DBRK_2", reuse, is_training)
-            G_DBR_K3 = self.DeConv_BN_ReLu(G_DBR_K2, ngf, ngf, "G_DBRK_3", reuse, is_training)
+            G_DBR_K2 = self.DeConv_BN_ReLu(G_DBR_K1, ngf, ngf, "g_DBRK_2", reuse, is_training)
+            G_DBR_K3 = self.DeConv_BN_ReLu(G_DBR_K2, ngf, ngf, "g_DBRK_3", reuse, is_training)
             G_DBR_K3.outputs = G_DBR_K3.outputs + G_CBP_K2.outputs
-            G_DBR_K4 = self.DeConv_BN_ReLu(G_DBR_K3, ngf, ngf, "G_DBRK_4", reuse, is_training)
-            G_DBR_3 = self.DeConv_BN_ReLu(G_DBR_K4, ngf, 3, "G_DBR3", reuse, is_training)
+            G_DBR_K4 = self.DeConv_BN_ReLu(G_DBR_K3, ngf, ngf, "g_DBRK_4", reuse, is_training)
+            G_DBR_3 = self.DeConv_BN_ReLu(G_DBR_K4, ngf, 3, "g_DBR3", reuse, is_training)
             G_DBR_3.outputs = G_DBR_3.outputs + x
-            out = tf.nn.tanh(G_DBR_3.outputs, name="out")
+            out = tf.nn.tanh(G_DBR_3.outputs, name="g_out")
             return out
 
     def build_model(self):
