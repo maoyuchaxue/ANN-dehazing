@@ -181,6 +181,9 @@ class CGAN(object):
             tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake_logits, labels=tf.ones_like(D_fake)))
         self.g_loss = self.lambda_e * self.g_e_loss + self.lambda_p * self.g_p_loss + self.lambda_d * self.g_loss_from_d
 
+        # for test      
+        self.fake_images = self.generator(self.z, self.x, is_training=False, reuse=True)
+
         """ Training """
         # divide trainable variables into a group for D and a group for G
         t_vars = tf.trainable_variables()
