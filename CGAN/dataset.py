@@ -10,6 +10,7 @@ class DataSet(object):
         self.batch_size = batch_size
         self.max_size = max_size
         self.gen_image_list()
+        self.shuffle_data()
         self.cur_index = 0
 
     def gen_image_list(self):
