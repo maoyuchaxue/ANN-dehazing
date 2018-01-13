@@ -15,7 +15,7 @@ else:
         return tf.concat(tensors, axis, *args, **kwargs)
 
 class CGAN(object):
-    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.0001, lambda_d=1, lambda_p=1e-4, lambda_e=1, lambda_t=1):
+    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.0001, lambda_d=1, lambda_p=1e-4, lambda_e=0.01, lambda_t=1):
         self.sess = sess
         self.epoch = epoch
         self.batch_size = batch_size
@@ -209,7 +209,7 @@ class CGAN(object):
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             self.d_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
                       .minimize(self.d_loss, var_list=d_vars)
-            self.g_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
+            self.g_optim = tf.train.AdamOptimizer(self.learning_rate * 5, beta1=self.beta1) \
                       .minimize(self.g_loss, var_list=g_vars) # lr *5 beta1 ????
         
         """ Summary """
