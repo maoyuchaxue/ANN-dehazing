@@ -39,7 +39,7 @@ class DataSet(object):
         original_img = cv2.resize(original_img_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
         hazed_img = cv2.resize(hazed_img_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
         tx = cv2.resize(tx_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
-        tx = np.reshape(tx[0:self.DATA_SIZE,0:self.DATA_SIZE,0], (self.DATA_SIZE, self.DATA_SIZE)) 
+        tx = np.reshape(tx[0:self.DATA_SIZE,0:self.DATA_SIZE,0], (self.DATA_SIZE, self.DATA_SIZE, 1)) 
 
         original_img = original_img * 2 - 1
         hazed_img = hazed_img * 2 - 1
