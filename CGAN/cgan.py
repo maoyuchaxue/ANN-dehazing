@@ -15,7 +15,7 @@ else:
         return tf.concat(tensors, axis, *args, **kwargs)
 
 class CGAN(object):
-    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.0001, lambda_d=1, lambda_p=1e-4, lambda_e=0.01):
+    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.0001, lambda_d=1, lambda_p=1e-4, lambda_e=0.01, lambda_t=1):
         self.sess = sess
         self.epoch = epoch
         self.batch_size = batch_size
@@ -34,8 +34,8 @@ class CGAN(object):
         self.result_dir = result_dir
         self.checkpoint_dir = checkpoint_dir
         self.model_dir = model_dir
-        self.test_set = DataSet("../data/testset", self.batch_size)
-        self.train_set = DataSet("../data/output", self.batch_size)
+        self.test_set = DataSet("../data/testset", self.batch_size, True)
+        self.train_set = DataSet("../data/trainset", self.batch_size, False)
         # self.data_X, self.data_Y = load_data()
         # self.num_batches = len(self.data_X) // self.batch_size
         self.num_batches = self.train_set.total_batches
@@ -259,17 +259,27 @@ class CGAN(object):
 
             return out, t_out
 
+    def getA(self, t):
+        neg_t = -tf.reshape(t, [batch_size, -1], name='g_neg_t')
+        numpx = math.floor(self.input_height * self.input_weight / 1000.0)
+        A = -tf.reduce_mean(tf.nn.top_k(neg_t, numpx), axis=1, name='g_A')
+        return A
+    
+
     def build_model(self):
         # shpae = N*H*W*C
         # x : hazed images, labels
         # y : ground truth images, inputs
         # z : noise vector
+        # t_real : t from ground truth
         self.x = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight, self.input_channel], name='hazed_images')
         self.y = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight, self.input_channel], name='ground_truth')
         self.z = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight, self.z_dim], name='z')
+        #self.A = tf.placeholder(tf.float32, [self.batch_size], name='A')
+        self.t_real = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight], name='t_real')
         # Conditional GAN
         D_real, D_real_logits, _ = self.discriminator(self.y, self.x, is_training=True, reuse=False)
-        G = self.generator(self.z, self.x, is_training=True, reuse=False)
+        G, t = self.generator(self.z, self.x, is_training=True, reuse=False)
         D_fake, D_fake_logits, _ = self.discriminator(G, self.x, is_training=True, reuse=True)
         # ===== D loss =====
         d_loss_real = tf.reduce_mean(
@@ -289,7 +299,9 @@ class CGAN(object):
         # Discriminator Loss
         self.g_loss_from_d = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake_logits, labels=tf.ones_like(D_fake)))
-        self.g_loss = self.lambda_e * self.g_e_loss + self.lambda_p * self.g_p_loss + self.lambda_d * self.g_loss_from_d
+        # t loss
+        self.g_t_loss = tf.reduce_mean(tf.square(self.t_real - t))
+        self.g_loss = self.lambda_e * self.g_e_loss + self.lambda_p * self.g_p_loss + self.lambda_d * self.g_loss_from_d + lambda_t * self.g_t_loss
 
         # for test      
         self.fake_images = self.generator(self.z, self.x, is_training=False, reuse=True)
@@ -315,10 +327,11 @@ class CGAN(object):
         p_loss_sum = tf.summary.scalar("p_loss", self.g_p_loss)
         e_loss_sum = tf.summary.scalar("e_loss", self.g_e_loss)
         g_loss_from_d_sum = tf.summary.scalar("g_loss_from_d", self.g_loss_from_d)
+        t_loss_sum = tf.summary.scalar("t_loss", self.g_t_loss)
         g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
 
         # final summary operations
-        self.g_sum = tf.summary.merge([d_loss_fake_sum, p_loss_sum, e_loss_sum, g_loss_from_d_sum, g_loss_sum])
+        self.g_sum = tf.summary.merge([d_loss_fake_sum, p_loss_sum, e_loss_sum, g_loss_from_d_sum, t_loss_sum, g_loss_sum])
         self.d_sum = tf.summary.merge([d_loss_real_sum, d_loss_sum])
 
     def train(self):
@@ -356,19 +369,19 @@ class CGAN(object):
 
             # get batch data
             for idx in range(start_batch_id, self.num_batches):
-                batch_hazed_img, batch_ground_truth = self.train_set.next_batch()
+                batch_hazed_img, batch_ground_truth, batch_t = self.train_set.next_batch()
                 batch_z = np.random.uniform(-1, 1, [self.batch_size, self.input_height, self.input_weight, self.z_dim]).astype(np.float32)
                 
                 # update D network
                 _, summary_str, d_loss = self.sess.run([self.d_optim, self.d_sum, self.d_loss],
                                                        feed_dict={self.x: batch_hazed_img, self.y: batch_ground_truth,
-                                                                  self.z: batch_z})
+                                                                  self.z: batch_z, self.t: batch_t})
                 self.writer.add_summary(summary_str, counter)
 
                 # update G network
                 _, summary_str, g_loss = self.sess.run([self.g_optim, self.g_sum, self.g_loss],
                                                        feed_dict={self.x: batch_hazed_img, self.y: batch_ground_truth,
-                                                                  self.z: batch_z})
+                                                                  self.z: batch_z, self.t: batch_t})
                 self.writer.add_summary(summary_str, counter)
                 
                 # display training status
