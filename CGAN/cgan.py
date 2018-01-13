@@ -142,10 +142,11 @@ class CGAN(object):
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
                                 name='g_c_conv_1')
-            C_MaxPool_1 = tl.layers.MaxPool2d(C_Conv_1,
-                                filter_size=(2, 2),
-                                strides=[1, 1, 1, 1],
+            C_MaxPool_1 = tl.layers.PoolLayer(C_Conv_1,
+                                ksize=[1, 2, 2, 1],
+                                strides=[1, 2, 2, 1],
                                 padding='SAME',
+                                pool=tf.nn.max_pool,
                                 name="g_c_maxpool_1")
             C_Upsampling_1 = tl.layers.UpSampling2dLayer(C_MaxPool_1,
                                 size=[self.input_height, self.input_weight],
@@ -160,10 +161,11 @@ class CGAN(object):
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
                                 name='g_c_conv_2')
-            C_MaxPool_2 = tl.layers.MaxPool2d(C_Conv_2,
-                                filter_size=(2, 2),
-                                strides=[1, 1, 1, 1],
+            C_MaxPool_2 = tl.layers.PoolLayer(C_Conv_2,
+                                ksize=[1, 2, 2, 1],
+                                strides=[1, 2, 2, 1],
                                 padding='SAME',
+                                pool=tf.nn.max_pool,
                                 name="g_c_maxpool_2")
             C_Upsampling_2 = tl.layers.UpSampling2dLayer(C_MaxPool_2,
                                 size=[self.input_height, self.input_weight],
@@ -178,10 +180,11 @@ class CGAN(object):
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
                                 name='g_c_conv_3')
-            C_MaxPool_3 = tl.layers.MaxPool2d(C_Conv_3,
-                                filter_size=(2, 2),
-                                strides=[1, 1, 1, 1],
+            C_MaxPool_3 = tl.layers.PoolLayer(C_Conv_3,
+                                ksize=[1, 2, 2, 1],
+                                strides=[1, 2, 2, 1],
                                 padding='SAME',
+                                pool=tf.nn.max_pool,
                                 name="g_c_maxpool_3")
             C_Upsampling_3 = tl.layers.UpSampling2dLayer(C_MaxPool_3,
                                 size=[self.input_height, self.input_weight],
@@ -201,10 +204,11 @@ class CGAN(object):
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
                                 name='g_f_conv_1')
-            F_MaxPool_1 = tl.layers.MaxPool2d(F_Conv_1,
-                                filter_size=(2, 2),
-                                strides=[1, 1, 1, 1],
+            F_MaxPool_1 = tl.layers.PoolLayer(F_Conv_1,
+                                ksize=[1, 2, 2, 1],
+                                strides=[1, 2, 2, 1],
                                 padding='SAME',
+                                pool=tf.nn.max_pool,
                                 name="g_f_maxpool_1")
             F_Upsampling_1 = tl.layers.UpSampling2dLayer(F_MaxPool_1,
                                 size=[self.input_height, self.input_weight],
@@ -221,10 +225,11 @@ class CGAN(object):
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
                                 name='g_f_conv_2')
-            F_MaxPool_2 = tl.layers.MaxPool2d(F_Conv_2,
-                                filter_size=(2, 2),
-                                strides=[1, 1, 1, 1],
+            F_MaxPool_2 = tl.layers.PoolLayer(F_Conv_2,
+                                ksize=[1, 2, 2, 1],
+                                strides=[1, 2, 2, 1],
                                 padding='SAME',
+                                pool=tf.nn.max_pool,
                                 name="g_f_maxpool_2")
             F_Upsampling_2 = tl.layers.UpSampling2dLayer(F_MaxPool_2,
                                 size=[self.input_height, self.input_weight],
@@ -239,10 +244,11 @@ class CGAN(object):
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
                                 name='g_f_conv_3')
-            F_MaxPool_3 = tl.layers.MaxPool2d(F_Conv_3,
-                                filter_size=(2, 2),
-                                strides=[1, 1, 1, 1],
+            F_MaxPool_3 = tl.layers.PoolLayer(F_Conv_3,
+                                ksize=[1, 2, 2, 1],
+                                strides=[1, 2, 2, 1],
                                 padding='SAME',
+                                pool=tf.nn.max_pool,
                                 name="g_f_maxpool_3")
             F_Upsampling_3 = tl.layers.UpSampling2dLayer(F_MaxPool_3,
                                 size=[self.input_height, self.input_weight],
