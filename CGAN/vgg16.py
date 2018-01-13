@@ -27,9 +27,13 @@ class Vgg16:
         :param rgb: rgb image [batch, height, width, 3] values scaled [0, 1]
         """
 
+        '''
+        Lucheng: Here I change rgb from [0,1] to [-1,1], so rgb_scaled need to change back to [0,1]
+        '''
+
         start_time = time.time()
         print("build model started")
-        rgb_scaled = rgb * 255.0
+        rgb_scaled = ( rgb + 1.0 ) / 2.0
 
         # Convert RGB to BGR
         red, green, blue = tf.split(axis=3, num_or_size_splits=3, value=rgb_scaled)
@@ -42,7 +46,6 @@ class Vgg16:
             red - VGG_MEAN[2],
         ])
         assert bgr.get_shape().as_list()[1:] == [224, 224, 3]
-
         self.conv1_1 = self.conv_layer(bgr, "conv1_1")
         self.conv1_2 = self.conv_layer(self.conv1_1, "conv1_2")
         self.pool1 = self.max_pool(self.conv1_2, 'pool1')

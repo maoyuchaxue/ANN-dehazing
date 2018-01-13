@@ -36,6 +36,10 @@ class DataSet(object):
 
         original_img = cv2.resize(original_img_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
         hazed_img = cv2.resize(hazed_img_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
+
+        original_img = original_img * 2 - 1
+        hazed_img = hazed_img * 2 - 1
+
         return original_img, hazed_img 
 
     def shuffle_data(self):
