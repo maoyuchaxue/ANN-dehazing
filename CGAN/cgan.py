@@ -133,24 +133,131 @@ class CGAN(object):
         '''
             #z = concat([z, x], 3)
             tl.layers.set_name_reuse(reuse)
-            Input = tl.layers.InputLayer(x, "g_Input")
-            G_CBP_K1 = self.Conv_BN_PReLu(Input, 3, ngf, "g_CBPK_1", reuse, is_training)
-            G_CBP_K2 = self.Conv_BN_PReLu(G_CBP_K1, ngf, ngf, "g_CBPK_2", reuse, is_training)
-            G_CBP_K3 = self.Conv_BN_PReLu(G_CBP_K2, ngf, ngf, "g_CBPK_3", reuse, is_training)
-            G_CBP_K4 = self.Conv_BN_PReLu(G_CBP_K3, ngf, ngf, "g_CBPK_4", reuse, is_training)
-            G_CBP_K_div_2 = self.Conv_BN_PReLu(G_CBP_K4, ngf, ngf / 2, "g_CBPK/2", reuse, is_training)
-            G_CBP_1 = self.Conv_BN_PReLu(G_CBP_K_div_2, ngf / 2, 1, "g_CBP1", reuse, is_training)
-            G_DBR_K_div_2 = self.DeConv_BN_ReLu(G_CBP_1, 1, ngf / 2, "g_DBRK/2", reuse, is_training)
-            G_DBR_K1 = self.DeConv_BN_ReLu(G_DBR_K_div_2, ngf / 2, ngf, "g_DBRK_1", reuse, is_training)
-            G_DBR_K1.outputs = G_DBR_K1.outputs + G_CBP_K4.outputs
-            G_DBR_K2 = self.DeConv_BN_ReLu(G_DBR_K1, ngf, ngf, "g_DBRK_2", reuse, is_training)
-            G_DBR_K3 = self.DeConv_BN_ReLu(G_DBR_K2, ngf, ngf, "g_DBRK_3", reuse, is_training)
-            G_DBR_K3.outputs = G_DBR_K3.outputs + G_CBP_K2.outputs
-            G_DBR_K4 = self.DeConv_BN_ReLu(G_DBR_K3, ngf, ngf, "g_DBRK_4", reuse, is_training)
-            G_DBR_3 = self.DeConv_BN_ReLu(G_DBR_K4, ngf, 3, "g_DBR3", reuse, is_training)
-            G_DBR_3.outputs = G_DBR_3.outputs + x
-            out = tf.nn.tanh(G_DBR_3.outputs, name="g_out")
-            return out
+            Coarse_Scale_Input = tl.layers.InputLayer(x, "g_c_input")
+            C_Conv_1 = tl.layers.Conv2dLayer(Coarse_Scale_Input,
+                                act=tf.nn.relu,
+                                shape=[11, 11, 3, 5],
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                W_init=tf.truncated_normal_initializer(stddev=0.02),
+                                b_init=tf.constant_initializer(value=0.0),
+                                name='g_c_conv_1')
+            C_MaxPool_1 = tl.layers.MaxPool2d(C_Conv_1,
+                                filter_size=(2, 2),
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                name="g_c_maxpool_1")
+            C_Upsampling_1 = tl.layers.UpSampling2dLayer(C_MaxPool_1,
+                                size=[self.input_height, self.input_weight],
+                                is_scale=False,
+                                method=1,
+                                name="g_c_upsampling_1")
+            C_Conv_2 = tl.layers.Conv2dLayer(C_Upsampling_1,
+                                act=tf.nn.relu,
+                                shape=[9, 9, 5, 5],
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                W_init=tf.truncated_normal_initializer(stddev=0.02),
+                                b_init=tf.constant_initializer(value=0.0),
+                                name='g_c_conv_2')
+            C_MaxPool_2 = tl.layers.MaxPool2d(C_Conv_2,
+                                filter_size=(2, 2),
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                name="g_c_maxpool_2")
+            C_Upsampling_2 = tl.layers.UpSampling2dLayer(C_MaxPool_2,
+                                size=[self.input_height, self.input_weight],
+                                is_scale=False,
+                                method=1,
+                                name="g_c_upsampling_2")
+            C_Conv_3 = tl.layers.Conv2dLayer(C_Upsampling_2,
+                                act=tf.nn.relu,
+                                shape=[7, 7, 5, 10],
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                W_init=tf.truncated_normal_initializer(stddev=0.02),
+                                b_init=tf.constant_initializer(value=0.0),
+                                name='g_c_conv_3')
+            C_MaxPool_3 = tl.layers.MaxPool2d(C_Conv_3,
+                                filter_size=(2, 2),
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                name="g_c_maxpool_3")
+            C_Upsampling_3 = tl.layers.UpSampling2dLayer(C_MaxPool_3,
+                                size=[self.input_height, self.input_weight],
+                                is_scale=False,
+                                method=1,
+                                name="g_c_upsampling_3")
+            C_Out_i = tf.reshape(C_Upsampling_3.outputs, [self.batch_size * self.input_height * self.input_weight, 10])
+            C_Out = tf.layers.dense(C_Out_i, units=1, activation=tf.nn.sigmoid, name="g_c_out", reuse=reuse)
+            C_Out = tf.reshape(C_Out, [self.batch_size, self.input_height, self.input_weight, 1])
+
+            Fine_Scale_Input = tl.layers.InputLayer(x, "g_f_input")
+            F_Conv_1 = tl.layers.Conv2dLayer(Fine_Scale_Input,
+                                act=tf.nn.relu,
+                                shape=[7, 7, 3, 4],
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                W_init=tf.truncated_normal_initializer(stddev=0.02),
+                                b_init=tf.constant_initializer(value=0.0),
+                                name='g_f_conv_1')
+            F_MaxPool_1 = tl.layers.MaxPool2d(F_Conv_1,
+                                filter_size=(2, 2),
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                name="g_f_maxpool_1")
+            F_Upsampling_1 = tl.layers.UpSampling2dLayer(F_MaxPool_1,
+                                size=[self.input_height, self.input_weight],
+                                is_scale=False,
+                                method=1,
+                                name="g_f_upsampling_1")
+            F_Upsampling_1_out = tf.concat([F_Upsampling_1.outputs, C_Out], axis=3)
+            F_Concat_Input = tl.layers.InputLayer(F_Upsampling_1_out, name="g_f_concat")
+            F_Conv_2 = tl.layers.Conv2dLayer(F_Concat_Input,
+                                act=tf.nn.relu,
+                                shape=[5, 5, 5, 5],
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                W_init=tf.truncated_normal_initializer(stddev=0.02),
+                                b_init=tf.constant_initializer(value=0.0),
+                                name='g_f_conv_2')
+            F_MaxPool_2 = tl.layers.MaxPool2d(F_Conv_2,
+                                filter_size=(2, 2),
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                name="g_f_maxpool_2")
+            F_Upsampling_2 = tl.layers.UpSampling2dLayer(F_MaxPool_2,
+                                size=[self.input_height, self.input_weight],
+                                is_scale=False,
+                                method=1,
+                                name="g_f_upsampling_2")
+            F_Conv_3 = tl.layers.Conv2dLayer(F_Upsampling_2,
+                                act=tf.nn.relu,
+                                shape=[3, 3, 5, 10],
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                W_init=tf.truncated_normal_initializer(stddev=0.02),
+                                b_init=tf.constant_initializer(value=0.0),
+                                name='g_f_conv_3')
+            F_MaxPool_3 = tl.layers.MaxPool2d(F_Conv_3,
+                                filter_size=(2, 2),
+                                strides=[1, 1, 1, 1],
+                                padding='SAME',
+                                name="g_f_maxpool_3")
+            F_Upsampling_3 = tl.layers.UpSampling2dLayer(F_MaxPool_3,
+                                size=[self.input_height, self.input_weight],
+                                is_scale=False,
+                                method=1,
+                                name="g_f_upsampling_3")
+            F_Out_i = tf.reshape(F_Upsampling_3.outputs, [self.batch_size * self.input_height * self.input_weight, 10])
+            F_Out = tf.layers.dense(F_Out_i, units=1, activation=tf.nn.sigmoid, name="g_f_out", reuse=reuse)
+            t_out = tf.reshape(F_Out, [self.batch_size, self.input_height, self.input_weight, 1])
+
+            A = getA(t_out)
+            t_x = tf.tile(t_out, [1, 1, 1, 3])
+            out = (x - A) / tf.maximum(0.1, t_x) + A
+
+            return out, t_out
 
     def build_model(self):
         # shpae = N*H*W*C
