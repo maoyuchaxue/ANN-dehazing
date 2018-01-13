@@ -15,7 +15,7 @@ else:
         return tf.concat(tensors, axis, *args, **kwargs)
 
 class CGAN(object):
-    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.002, lambda_d=1, lambda_p=1e-4, lambda_e=1):
+    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.0001, lambda_d=1, lambda_p=1e-4, lambda_e=0.01):
         self.sess = sess
         self.epoch = epoch
         self.batch_size = batch_size
@@ -44,6 +44,7 @@ class CGAN(object):
         input_channel = int(input_channel)
         output_channel = int(output_channel)
         with tf.variable_scope(scope, reuse=reuse):
+            tl.layers.set_name_reuse(reuse)
             network = tl.layers.Conv2dLayer(network,
                                 shape=[kernel_size, kernel_size, input_channel, output_channel],
                                 strides=[1, 1, 1, 1],
@@ -59,6 +60,7 @@ class CGAN(object):
         input_channel = int(input_channel)
         output_channel = int(output_channel)
         with tf.variable_scope(scope, reuse=reuse):
+            tl.layers.set_name_reuse(reuse)
             network = tl.layers.DeConv2dLayer(network,
                                               shape=[kernel_size, kernel_size, output_channel, input_channel],
                                               output_shape=[network.outputs.get_shape().as_list()[0], network.outputs.get_shape().as_list()[1], network.outputs.get_shape().as_list()[2], output_channel],
@@ -89,6 +91,7 @@ class CGAN(object):
             return out, out_logit, net
             '''
             y = concat([x, y], 3)
+            tl.layers.set_name_reuse(reuse)
             Input = tl.layers.InputLayer(y, "d_Input")
             CB_K = tl.layers.Conv2dLayer(Input,
                                         shape=[3, 3, 6, ndf],
@@ -128,7 +131,7 @@ class CGAN(object):
 //
             return out
         '''
-            #z = concat([z, x], 1)
+            #z = concat([z, x], 3)
             tl.layers.set_name_reuse(reuse)
             Input = tl.layers.InputLayer(x, "g_Input")
             G_CBP_K1 = self.Conv_BN_PReLu(Input, 3, ngf, "g_CBPK_1", reuse, is_training)
@@ -156,7 +159,7 @@ class CGAN(object):
         # z : noise vector
         self.x = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight, self.input_channel], name='hazed_images')
         self.y = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight, self.input_channel], name='ground_truth')
-        self.z = tf.placeholder(tf.float32, [self.batch_size, self.z_dim], name='z')
+        self.z = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight, self.z_dim], name='z')
         # Conditional GAN
         D_real, D_real_logits, _ = self.discriminator(self.y, self.x, is_training=True, reuse=False)
         G = self.generator(self.z, self.x, is_training=True, reuse=False)
@@ -194,7 +197,7 @@ class CGAN(object):
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             self.d_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
                       .minimize(self.d_loss, var_list=d_vars)
-            self.g_optim = tf.train.AdamOptimizer(self.learning_rate*5, beta1=self.beta1) \
+            self.g_optim = tf.train.AdamOptimizer(self.learning_rate * 5, beta1=self.beta1) \
                       .minimize(self.g_loss, var_list=g_vars) # lr *5 beta1 ????
         
         """ Summary """
@@ -217,7 +220,7 @@ class CGAN(object):
         tf.global_variables_initializer().run()
 
         # graph inputs for visualize training results
-        self.sample_z = np.random.uniform(-1, 1, size=(self.batch_size , self.z_dim))
+        self.sample_z = np.random.uniform(-1, 1, size=(self.batch_size , self.input_height, self.input_weight, self.z_dim))
         self.test_hazed_img, _ = self.test_set.next_batch()
         # self.test_hazed_img = self.data_x[0:self.batch_size]
 
@@ -247,7 +250,7 @@ class CGAN(object):
             # get batch data
             for idx in range(start_batch_id, self.num_batches):
                 batch_hazed_img, batch_ground_truth = self.train_set.next_batch()
-                batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]).astype(np.float32)
+                batch_z = np.random.uniform(-1, 1, [self.batch_size, self.input_height, self.input_weight, self.z_dim]).astype(np.float32)
                 
                 # update D network
                 _, summary_str, d_loss = self.sess.run([self.d_optim, self.d_sum, self.d_loss],

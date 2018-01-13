@@ -10,6 +10,7 @@ class DataSet(object):
         self.batch_size = batch_size
         self.max_size = max_size
         self.gen_image_list()
+        self.shuffle_data()
         self.cur_index = 0
 
     def gen_image_list(self):
@@ -39,7 +40,11 @@ class DataSet(object):
         hazed_img = cv2.resize(hazed_img_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
         tx = cv2.resize(tx_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
         tx = np.reshape(tx[0:self.DATA_SIZE,0:self.DATA_SIZE,0], (self.DATA_SIZE, self.DATA_SIZE)) 
-        return original_img, hazed_img, tx 
+
+        original_img = original_img * 2 - 1
+        hazed_img = hazed_img * 2 - 1
+
+        return original_img, hazed_img, tx
 
     def shuffle_data(self):
         random.shuffle(self.image_list)
