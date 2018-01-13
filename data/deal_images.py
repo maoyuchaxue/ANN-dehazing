@@ -14,7 +14,7 @@ def generate_dataset(depth_data, img_data):
     img = np.transpose(img, axes=[2, 1, 0])
     img = np.reshape(img, [480*640, 3])
 
-    k = random.uniform(0.7, 1.0) * 255
+    k = random.uniform(0.6, 0.8) * 255
     A = np.array([k,k,k])
     beta = random.uniform(-1.5, -0.5) / 2
 
@@ -26,9 +26,11 @@ def generate_dataset(depth_data, img_data):
     img_out = np.reshape(img_out, (480*640*3))
 
     img_out_show = np.reshape(img_out, (480, 640, 3))
+    tx_out = np.reshape(tx, (480, 640, 1)) * 255.0
+    tx_out = tx_out.repeat(3, axis=2)
     # cv2.imshow("img", img_out_show / 255)
     
-    return img_out_show, orig_img
+    return img_out_show, orig_img, tx_out 
 
 depth_file = open("./depths.csv", "r")
 img_file = open("./images.csv", "r")
@@ -51,11 +53,11 @@ for i in range(TOT_DATA):
     d2 = [int(d) for d in t2.split(",")]
 
     for j in range(REPEAT_TIMES):
-        l1, l2 = generate_dataset(d1, d2)
+        l1, l2, l3 = generate_dataset(d1, d2)
 
         # hazed_img_file.write(str(i) + "," + str(j) + "," + l1 + "\n")
         
-        cv2.imwrite("./output/" + str(i) + "_" + str(j) + ".jpg", np.concatenate([l2, l1], axis=1))
+        cv2.imwrite("./trainset/" + str(i) + "_" + str(j) + ".jpg", np.concatenate([l2, l1, l3], axis=1))
 
         # if (j == 0):
             # original_img_file.write(str(i) + "," + l2 + "\n")
