@@ -34,8 +34,8 @@ class CGAN(object):
         self.result_dir = result_dir
         self.checkpoint_dir = checkpoint_dir
         self.model_dir = model_dir
-        self.test_set = DataSet("../data/testset", self.batch_size)
-        self.train_set = DataSet("../data/output", self.batch_size)
+        self.test_set = DataSet("../data/testset", self.batch_size, True)
+        self.train_set = DataSet("../data/trainset", self.batch_size, False)
         # self.data_X, self.data_Y = load_data()
         # self.num_batches = len(self.data_X) // self.batch_size
         self.num_batches = self.train_set.total_batches
