@@ -13,9 +13,10 @@ if "concat_v2" in dir(tf):
 else:
     def concat(tensors, axis, *args, **kwargs):
         return tf.concat(tensors, axis, *args, **kwargs)
+   
 
 class CGAN(object):
-    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.0001, lambda_d=1, lambda_p=1e-4, lambda_e=0.01, lambda_t=1):
+    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.0005, lambda_d=0.08, lambda_p=1e-4, lambda_e=0.5, lambda_t=40):
         self.sess = sess
         self.epoch = epoch
         self.batch_size = batch_size
@@ -24,6 +25,7 @@ class CGAN(object):
         self.lambda_p = lambda_p
         self.lambda_d = lambda_d
         self.lambda_e = lambda_e
+        self.lambda_t = lambda_t
         self.beta1 = 0.5 # ???
         self.input_height = 224
         self.input_weight = 224
@@ -40,6 +42,15 @@ class CGAN(object):
         # self.num_batches = len(self.data_X) // self.batch_size
         self.num_batches = self.train_set.total_batches
 
+    def getA(self, t):
+        neg_t = -tf.reshape(t, [self.batch_size, -1], name='g_neg_t')
+        numpx = math.floor(self.input_height * self.input_weight / 1000.0)
+        top_k, _ = tf.nn.top_k(neg_t, numpx)
+        A = -tf.reduce_mean(top_k, axis=1, name='g_A')
+        A = tf.reshape(A, [self.batch_size, 1, 1, 1])
+        A = tf.tile(A, [1, self.input_height, self.input_weight, self.input_channel])
+        return A
+ 
     def Conv_BN_PReLu(self, network, input_channel, output_channel, scope, reuse, is_training, kernel_size=3):
         input_channel = int(input_channel)
         output_channel = int(output_channel)
@@ -51,6 +62,7 @@ class CGAN(object):
                                 padding='SAME',
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
+                                data_format="NHWC",
                                 name=scope+'/conv')
             network = tl.layers.BatchNormLayer(network, is_train=is_training, name=scope+'/bn')
             network = tl.layers.PReluLayer(network, a_init=tf.constant_initializer(value=0.2), channel_shared=True, name=scope+'/pReLu')
@@ -99,6 +111,7 @@ class CGAN(object):
                                         padding='SAME',
                                         W_init=tf.truncated_normal_initializer(stddev=0.02),
                                         b_init=tf.constant_initializer(value=0.0),
+                                        data_format="NHWC",
                                         name='d_CB_K')
             CB_K = tl.layers.BatchNormLayer(CB_K, is_train=is_training, name="d_CB_K_BN")
             CBP_2K = self.Conv_BN_PReLu(CB_K, ndf, 2 * ndf, "d_CBP_2K", reuse, is_training)
@@ -110,6 +123,7 @@ class CGAN(object):
                                         padding='SAME',
                                         W_init=tf.truncated_normal_initializer(stddev=0.02),
                                         b_init=tf.constant_initializer(value=0.0),
+                                        data_format="NHWC",
                                         name='d_Conv_1')
             out = tf.nn.sigmoid(Conv_1.outputs, name = "d_out")
             return out, Conv_1.outputs, Conv_1
@@ -141,6 +155,7 @@ class CGAN(object):
                                 padding='SAME',
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
+                                data_format="NHWC",
                                 name='g_c_conv_1')
             C_MaxPool_1 = tl.layers.PoolLayer(C_Conv_1,
                                 ksize=[1, 2, 2, 1],
@@ -160,6 +175,7 @@ class CGAN(object):
                                 padding='SAME',
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
+                                data_format="NHWC",
                                 name='g_c_conv_2')
             C_MaxPool_2 = tl.layers.PoolLayer(C_Conv_2,
                                 ksize=[1, 2, 2, 1],
@@ -179,6 +195,7 @@ class CGAN(object):
                                 padding='SAME',
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
+                                data_format="NHWC",
                                 name='g_c_conv_3')
             C_MaxPool_3 = tl.layers.PoolLayer(C_Conv_3,
                                 ksize=[1, 2, 2, 1],
@@ -203,6 +220,7 @@ class CGAN(object):
                                 padding='SAME',
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
+                                data_format="NHWC",
                                 name='g_f_conv_1')
             F_MaxPool_1 = tl.layers.PoolLayer(F_Conv_1,
                                 ksize=[1, 2, 2, 1],
@@ -224,6 +242,7 @@ class CGAN(object):
                                 padding='SAME',
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
+                                data_format="NHWC",
                                 name='g_f_conv_2')
             F_MaxPool_2 = tl.layers.PoolLayer(F_Conv_2,
                                 ksize=[1, 2, 2, 1],
@@ -243,6 +262,7 @@ class CGAN(object):
                                 padding='SAME',
                                 W_init=tf.truncated_normal_initializer(stddev=0.02),
                                 b_init=tf.constant_initializer(value=0.0),
+                                data_format="NHWC",
                                 name='g_f_conv_3')
             F_MaxPool_3 = tl.layers.PoolLayer(F_Conv_3,
                                 ksize=[1, 2, 2, 1],
@@ -259,18 +279,11 @@ class CGAN(object):
             F_Out = tf.layers.dense(F_Out_i, units=1, activation=tf.nn.sigmoid, name="g_f_out", reuse=reuse)
             t_out = tf.reshape(F_Out, [self.batch_size, self.input_height, self.input_weight, 1])
 
-            A = getA(t_out)
+            A = self.getA(t_out)
             t_x = tf.tile(t_out, [1, 1, 1, 3])
             out = (x - A) / tf.maximum(0.1, t_x) + A
 
             return out, t_out
-
-    def getA(self, t):
-        neg_t = -tf.reshape(t, [batch_size, -1], name='g_neg_t')
-        numpx = math.floor(self.input_height * self.input_weight / 1000.0)
-        A = -tf.reduce_mean(tf.nn.top_k(neg_t, numpx), axis=1, name='g_A')
-        return A
-    
 
     def build_model(self):
         # shpae = N*H*W*C
@@ -282,7 +295,7 @@ class CGAN(object):
         self.y = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight, self.input_channel], name='ground_truth')
         self.z = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight, self.z_dim], name='z')
         #self.A = tf.placeholder(tf.float32, [self.batch_size], name='A')
-        self.t_real = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight], name='t_real')
+        self.t_real = tf.placeholder(tf.float32, [self.batch_size, self.input_height, self.input_weight, 1], name='t_real')
         # Conditional GAN
         D_real, D_real_logits, _ = self.discriminator(self.y, self.x, is_training=True, reuse=False)
         G, t = self.generator(self.z, self.x, is_training=True, reuse=False)
@@ -307,10 +320,10 @@ class CGAN(object):
             tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake_logits, labels=tf.ones_like(D_fake)))
         # t loss
         self.g_t_loss = tf.reduce_mean(tf.square(self.t_real - t))
-        self.g_loss = self.lambda_e * self.g_e_loss + self.lambda_p * self.g_p_loss + self.lambda_d * self.g_loss_from_d + lambda_t * self.g_t_loss
+        self.g_loss = self.lambda_e * self.g_e_loss + self.lambda_p * self.g_p_loss + self.lambda_d * self.g_loss_from_d + self.lambda_t * self.g_t_loss
 
         # for test      
-        self.fake_images = self.generator(self.z, self.x, is_training=False, reuse=True)
+        self.fake_images, _ = self.generator(self.z, self.x, is_training=False, reuse=True)
 
         """ Training """
         # divide trainable variables into a group for D and a group for G
@@ -381,13 +394,13 @@ class CGAN(object):
                 # update D network
                 _, summary_str, d_loss = self.sess.run([self.d_optim, self.d_sum, self.d_loss],
                                                        feed_dict={self.x: batch_hazed_img, self.y: batch_ground_truth,
-                                                                  self.z: batch_z, self.t: batch_t})
+                                                                  self.z: batch_z, self.t_real: batch_t})
                 self.writer.add_summary(summary_str, counter)
 
                 # update G network
                 _, summary_str, g_loss = self.sess.run([self.g_optim, self.g_sum, self.g_loss],
                                                        feed_dict={self.x: batch_hazed_img, self.y: batch_ground_truth,
-                                                                  self.z: batch_z, self.t: batch_t})
+                                                                  self.z: batch_z, self.t_real: batch_t})
                 self.writer.add_summary(summary_str, counter)
                 
                 # display training status
