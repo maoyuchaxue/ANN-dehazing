@@ -349,9 +349,12 @@ class CGAN(object):
         t_loss_sum = tf.summary.scalar("t_loss", self.g_t_loss)
         g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
 
+        d_real_prob_sum = tf.summary.scalar("d_real_prob", D_real)
+        d_fake_prob_sum = tf.summary.scalar("d_fake_prob", D_fake)
+
         # final summary operations
         self.g_sum = tf.summary.merge([d_loss_fake_sum, p_loss_sum, e_loss_sum, g_loss_from_d_sum, t_loss_sum, g_loss_sum])
-        self.d_sum = tf.summary.merge([d_loss_real_sum, d_loss_sum])
+        self.d_sum = tf.summary.merge([d_loss_real_sum, d_loss_sum, d_real_prob_sum, d_fake_prob_sum])
 
     def train(self):
         
