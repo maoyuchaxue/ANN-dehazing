@@ -414,6 +414,9 @@ class CGAN(object):
                     save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
                                 './' + check_folder(self.result_dir + '/' + self.model_dir) + '/' + self.model_name + '_train_{:02d}_{:04d}.png'.format(
                                     epoch, idx))
+                    save_images(batch_hazed_img[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
+                                './' + check_folder(self.result_dir + '/' + self.model_dir) + '/' + self.model_name + '_train_{:02d}_{:04d}_origin.png'.format(
+                                    epoch, idx))
 
                 if np.mod(counter, 500) == 0:
                     self.save(self.checkpoint_dir, counter)
