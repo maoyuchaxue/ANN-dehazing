@@ -310,10 +310,12 @@ class CGAN(object):
         # t loss
         self.g_t_loss = tf.reduce_mean(tf.square(self.t_real - t))
         self.g_loss = self.lambda_e * self.g_e_loss + self.lambda_p * self.g_p_loss + self.lambda_d * self.g_loss_from_d + self.lambda_t * self.g_t_loss
-
+        # Calculate prob
+        d_real_prob = tf.reduce_mean(D_real)
+        d_fake_prob = tf.reduce_mean(D_fake)
         # for test      
         self.fake_images, _ = self.generator(self.z, self.x, is_training=False, reuse=True)
-
+        
         """ Training """
         # divide trainable variables into a group for D and a group for G
         t_vars = tf.trainable_variables()
@@ -338,8 +340,8 @@ class CGAN(object):
         t_loss_sum = tf.summary.scalar("t_loss", self.g_t_loss)
         g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
 
-        d_real_prob_sum = tf.summary.scalar("d_real_prob", D_real)
-        d_fake_prob_sum = tf.summary.scalar("d_fake_prob", D_fake)
+        d_real_prob_sum = tf.summary.scalar("d_real_prob", d_real_prob)
+        d_fake_prob_sum = tf.summary.scalar("d_fake_prob", d_fake_prob)
 
         # final summary operations
         self.g_sum = tf.summary.merge([d_loss_fake_sum, p_loss_sum, e_loss_sum, g_loss_from_d_sum, t_loss_sum, g_loss_sum])
