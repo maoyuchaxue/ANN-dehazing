@@ -148,15 +148,13 @@ class CGAN(object):
             #z = concat([z, x], 3)
             tl.layers.set_name_reuse(reuse)
             Coarse_Scale_Input = tl.layers.InputLayer(x, "g_c_input")
-            C_Conv_1 = tl.layers.Conv2dLayer(Coarse_Scale_Input,
-                                act=tf.nn.relu,
-                                shape=[11, 11, 3, 5],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                W_init=tf.truncated_normal_initializer(stddev=0.02),
-                                b_init=tf.constant_initializer(value=0.0),
-                                data_format="NHWC",
-                                name='g_c_conv_1')
+            C_Conv_1 = self.Conv_BN_PReLu(Coarse_Scale_Input,
+                                          input_channel=3,
+                                          output_channel=5,
+                                          scope="g_c_conv_1",
+                                          reuse=reuse,
+                                          is_training=is_training,
+                                          kernel_size=11)
             C_MaxPool_1 = tl.layers.PoolLayer(C_Conv_1,
                                 ksize=[1, 2, 2, 1],
                                 strides=[1, 2, 2, 1],
@@ -168,15 +166,13 @@ class CGAN(object):
                                 is_scale=False,
                                 method=1,
                                 name="g_c_upsampling_1")
-            C_Conv_2 = tl.layers.Conv2dLayer(C_Upsampling_1,
-                                act=tf.nn.relu,
-                                shape=[9, 9, 5, 5],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                W_init=tf.truncated_normal_initializer(stddev=0.02),
-                                b_init=tf.constant_initializer(value=0.0),
-                                data_format="NHWC",
-                                name='g_c_conv_2')
+            C_Conv_2 = self.Conv_BN_PReLu(C_Upsampling_1,
+                                          input_channel=5,
+                                          output_channel=5,
+                                          scope="g_c_conv_2",
+                                          reuse=reuse,
+                                          is_training=is_training,
+                                          kernel_size=9)
             C_MaxPool_2 = tl.layers.PoolLayer(C_Conv_2,
                                 ksize=[1, 2, 2, 1],
                                 strides=[1, 2, 2, 1],
@@ -188,15 +184,13 @@ class CGAN(object):
                                 is_scale=False,
                                 method=1,
                                 name="g_c_upsampling_2")
-            C_Conv_3 = tl.layers.Conv2dLayer(C_Upsampling_2,
-                                act=tf.nn.relu,
-                                shape=[7, 7, 5, 10],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                W_init=tf.truncated_normal_initializer(stddev=0.02),
-                                b_init=tf.constant_initializer(value=0.0),
-                                data_format="NHWC",
-                                name='g_c_conv_3')
+            C_Conv_3 = self.Conv_BN_PReLu(C_Upsampling_2,
+                                          input_channel=5,
+                                          output_channel=10,
+                                          scope="g_c_conv_3",
+                                          reuse=reuse,
+                                          is_training=is_training,
+                                          kernel_size=7)
             C_MaxPool_3 = tl.layers.PoolLayer(C_Conv_3,
                                 ksize=[1, 2, 2, 1],
                                 strides=[1, 2, 2, 1],
@@ -213,15 +207,13 @@ class CGAN(object):
             C_Out = tf.reshape(C_Out, [self.batch_size, self.input_height, self.input_weight, 1])
 
             Fine_Scale_Input = tl.layers.InputLayer(x, "g_f_input")
-            F_Conv_1 = tl.layers.Conv2dLayer(Fine_Scale_Input,
-                                act=tf.nn.relu,
-                                shape=[7, 7, 3, 4],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                W_init=tf.truncated_normal_initializer(stddev=0.02),
-                                b_init=tf.constant_initializer(value=0.0),
-                                data_format="NHWC",
-                                name='g_f_conv_1')
+            F_Conv_1 = self.Conv_BN_PReLu(Fine_Scale_Input,
+                                          input_channel=3,
+                                          output_channel=4,
+                                          scope="g_f_conv_1",
+                                          reuse=reuse,
+                                          is_training=is_training,
+                                          kernel_size=7)
             F_MaxPool_1 = tl.layers.PoolLayer(F_Conv_1,
                                 ksize=[1, 2, 2, 1],
                                 strides=[1, 2, 2, 1],
@@ -235,15 +227,14 @@ class CGAN(object):
                                 name="g_f_upsampling_1")
             F_Upsampling_1_out = tf.concat([F_Upsampling_1.outputs, C_Out], axis=3)
             F_Concat_Input = tl.layers.InputLayer(F_Upsampling_1_out, name="g_f_concat")
-            F_Conv_2 = tl.layers.Conv2dLayer(F_Concat_Input,
-                                act=tf.nn.relu,
-                                shape=[5, 5, 5, 5],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                W_init=tf.truncated_normal_initializer(stddev=0.02),
-                                b_init=tf.constant_initializer(value=0.0),
-                                data_format="NHWC",
-                                name='g_f_conv_2')
+
+            F_Conv_2 = self.Conv_BN_PReLu(F_Concat_Input,
+                                          input_channel=5,
+                                          output_channel=5,
+                                          scope="g_f_conv_2",
+                                          reuse=reuse,
+                                          is_training=is_training,
+                                          kernel_size=5)
             F_MaxPool_2 = tl.layers.PoolLayer(F_Conv_2,
                                 ksize=[1, 2, 2, 1],
                                 strides=[1, 2, 2, 1],
@@ -255,15 +246,13 @@ class CGAN(object):
                                 is_scale=False,
                                 method=1,
                                 name="g_f_upsampling_2")
-            F_Conv_3 = tl.layers.Conv2dLayer(F_Upsampling_2,
-                                act=tf.nn.relu,
-                                shape=[3, 3, 5, 10],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                W_init=tf.truncated_normal_initializer(stddev=0.02),
-                                b_init=tf.constant_initializer(value=0.0),
-                                data_format="NHWC",
-                                name='g_f_conv_3')
+            F_Conv_3 = self.Conv_BN_PReLu(F_Upsampling_2,
+                                          input_channel=5,
+                                          output_channel=10,
+                                          scope="g_f_conv_3",
+                                          reuse=reuse,
+                                          is_training=is_training,
+                                          kernel_size=3)
             F_MaxPool_3 = tl.layers.PoolLayer(F_Conv_3,
                                 ksize=[1, 2, 2, 1],
                                 strides=[1, 2, 2, 1],
