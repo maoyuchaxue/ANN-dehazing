@@ -16,7 +16,7 @@ def generate_dataset(depth_data, img_data):
 
     k = random.uniform(0.6, 0.8) * 255
     A = np.array([k,k,k])
-    beta = random.uniform(-1.5, -0.5) / 2
+    beta = random.uniform(-1.0, -0.5) / 4
 
     tx = np.reshape(np.exp(depth_img * beta), (480*640, 1))
 
