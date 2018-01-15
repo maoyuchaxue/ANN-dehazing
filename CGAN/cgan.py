@@ -16,7 +16,7 @@ else:
    
 
 class CGAN(object):
-    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.00005, lambda_d=0.08, lambda_p=1e-3, lambda_e=0, lambda_t=40):
+    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.0005, lambda_d=0.08, lambda_p=1e-4, lambda_e=0.05, lambda_t=40):
         self.sess = sess
         self.epoch = epoch
         self.batch_size = batch_size
@@ -288,6 +288,8 @@ class CGAN(object):
         # Conditional GAN
         D_real, D_real_logits, _ = self.discriminator(self.y, self.x, is_training=True, reuse=False)
         G, t = self.generator(self.z, self.x, is_training=True, reuse=False)
+        A = self.getA(t)
+        A = tf.reduce_mean(A)
         D_fake, D_fake_logits, _ = self.discriminator(G, self.x, is_training=True, reuse=True)
         # ===== D loss =====
         d_loss_real = tf.reduce_mean(
@@ -326,7 +328,7 @@ class CGAN(object):
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             self.d_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
                       .minimize(self.d_loss, var_list=d_vars)
-            self.g_optim = tf.train.AdamOptimizer(self.learning_rate * 5, beta1=self.beta1) \
+            self.g_optim = tf.train.AdamOptimizer(self.learning_rate * 3, beta1=self.beta1) \
                       .minimize(self.g_loss, var_list=g_vars) # lr *5 beta1 ????
         
         """ Summary """
@@ -343,8 +345,9 @@ class CGAN(object):
         d_real_prob_sum = tf.summary.scalar("d_real_prob", d_real_prob)
         d_fake_prob_sum = tf.summary.scalar("d_fake_prob", d_fake_prob)
 
+        A_sum = tf.summary.scalar("A", A)
         # final summary operations
-        self.g_sum = tf.summary.merge([d_loss_fake_sum, p_loss_sum, e_loss_sum, g_loss_from_d_sum, t_loss_sum, g_loss_sum])
+        self.g_sum = tf.summary.merge([d_loss_fake_sum, p_loss_sum, e_loss_sum, g_loss_from_d_sum, t_loss_sum, g_loss_sum, A_sum])
         self.d_sum = tf.summary.merge([d_loss_real_sum, d_loss_sum, d_real_prob_sum, d_fake_prob_sum])
 
     def train(self):
