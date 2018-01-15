@@ -325,12 +325,18 @@ class CGAN(object):
         d_vars = [var for var in t_vars if 'd_' in var.name]
         g_vars = [var for var in t_vars if 'g_' in var.name]
 
+        global_step = tf.Variable(0, trainable=False)
+        learning_rate_decay = tf.train.exponential_decay(self.learning_rate, global_step,
+                                           100000, 0.96, staircase=True)
+
         # optimizers
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             self.d_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
                       .minimize(self.d_loss, var_list=d_vars)
-            self.g_optim = tf.train.AdamOptimizer(self.learning_rate * 3, beta1=self.beta1) \
-                      .minimize(self.g_loss, var_list=g_vars) # lr *5 beta1 ????
+            self.g_optim = tf.train.MomentumOptimizer(learning_rate_decay, 0.9)
+            .minimize(self.g_loss, global_step=global_step)
+            ##self.g_optim = tf.train.AdamOptimizer(self.learning_rate * 3, beta1=self.beta1) \
+            ##          .minimize(self.g_loss, var_list=g_vars) # lr *5 beta1 ????
         
         """ Summary """
         d_loss_real_sum = tf.summary.scalar("d_loss_real", d_loss_real)
