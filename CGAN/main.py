@@ -11,6 +11,7 @@ def parse_args():
     parser.add_argument('--epoch', type=int, default=20, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=4, help='The size of batch')
     parser.add_argument('--z_dim', type=int, default=4, help='Dimension of noise vector')
+    parser.add_argument('--test', help='Is testing')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoint',
                         help='Directory name to save the checkpoints')
     parser.add_argument('--result_dir', type=str, default='results',
@@ -71,12 +72,16 @@ def main():
         # show_all_variables()
 
         # launch the graph in a session
-        gan.train()
-        print(" [*] Training finished!")
+        
+        if (args.test):
+            gan.test()
+            print(" [*] Testing finished!")
+        else:
+            gan.train()
+            print(" [*] Training finished!")
 
         # visualize learned generator
         # gan.visualize_results(args.epoch-1)
-        print(" [*] Testing finished!")
 
 if __name__ == '__main__':
     main()
