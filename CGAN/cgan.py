@@ -36,6 +36,7 @@ class CGAN(object):
         self.result_dir = result_dir
         self.checkpoint_dir = checkpoint_dir
         self.model_dir = model_dir
+        self.val_set = DataSet("../data/valset", self.batch_size, False)
         self.test_set = DataSet("../data/testset", self.batch_size, True)
         self.train_set = DataSet("../data/trainset", self.batch_size, False)
         # self.data_X, self.data_Y = load_data()
@@ -435,6 +436,46 @@ class CGAN(object):
 
         # save model for final step
         self.save(self.checkpoint_dir, counter)
+
+    
+    def test(self):
+        # initialize all variables
+        tf.global_variables_initializer().run()
+
+        # restore check-point if it exits
+        could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+        if could_load:
+            start_epoch = (int)(checkpoint_counter / self.num_batches)
+            start_batch_id = checkpoint_counter - start_epoch * self.num_batches
+            counter = checkpoint_counter
+            print(" [*] Load SUCCESS")
+            print(" [*] Testing with epoch " + str(start_epoch))
+        else:
+            print(" [!] Load failed, cannot find model")
+            print(" [!] Test failed")
+            return 
+        
+        start_time = time.time()
+        test_num_batches = self.test_set.total_batches
+
+        # get test batch data
+        for idx in range(0, self.num_batches):
+            batch_hazed_img, batch_ground_truth = self.test_set.next_batch()
+            batch_z = np.random.uniform(-1, 1, [self.batch_size, self.input_height, self.input_weight, self.z_dim]).astype(np.float32)
+
+            samples = self.sess.run(self.fake_images,
+                feed_dict={self.z: batch_z, self.x: batch_hazed_img})
+
+            tot_num_samples = self.batch_size
+            manifold_h = int(np.floor(np.sqrt(tot_num_samples)))
+            manifold_w = int(np.floor(np.sqrt(tot_num_samples)))
+            save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
+                        './' + check_folder(self.result_dir + '/' + self.model_dir) + '/' + self.model_name + '_test_{:02d}_{:04d}.png'.format(
+                            epoch, idx))
+            save_images(batch_hazed_img[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
+                        './' + check_folder(self.result_dir + '/' + self.model_dir) + '/' + self.model_name + '_test_{:02d}_{:04d}_origin.png'.format(
+                            epoch, idx))    
+
 
     def load(self, checkpoint_dir):
         import re
