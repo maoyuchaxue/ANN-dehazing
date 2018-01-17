@@ -8,7 +8,7 @@ import argparse
 def parse_args():
     desc = "Tensorflow implementation of GAN collections"
     parser = argparse.ArgumentParser(description=desc)
-    parser.add_argument('--epoch', type=int, default=20, help='The number of epochs to run')
+    parser.add_argument('--epoch', type=int, default=80, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=4, help='The size of batch')
     parser.add_argument('--z_dim', type=int, default=4, help='Dimension of noise vector')
     parser.add_argument('--test', help='Is testing')

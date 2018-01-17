@@ -16,7 +16,7 @@ else:
    
 
 class CGAN(object):
-    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.0005, lambda_d=0, lambda_p=0, lambda_e=0, lambda_t=40):
+    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.001, lambda_d=0, lambda_p=0, lambda_e=0, lambda_t=40):
         self.sess = sess
         self.epoch = epoch
         self.batch_size = batch_size
@@ -46,7 +46,11 @@ class CGAN(object):
     def getA(self, t):
         neg_t = -tf.reshape(t, [self.batch_size, -1], name='g_neg_t')
         numpx = math.floor(self.input_height * self.input_weight / 1000.0)
-        top_k, _ = tf.nn.top_k(neg_t, numpx)
+        t_top, indice = tf.nn.top_k(neg_t, numpx)
+        print(indice.shape)
+        x_top = tf.reshape(self.x, [self.batch_size, -1])
+        x_top = x_top[indice]
+        print(x_top.shape)
         A = -tf.reduce_mean(top_k, axis=1, name='g_A')
         A = tf.reshape(A, [self.batch_size, 1, 1, 1])
         A = tf.tile(A, [1, self.input_height, self.input_weight, self.input_channel])
@@ -327,14 +331,14 @@ class CGAN(object):
 
         global_step = tf.Variable(0, trainable=False)
         learning_rate_decay = tf.train.exponential_decay(self.learning_rate, global_step,
-                                           100000, 0.96, staircase=True)
+                                           400, 0.96, staircase=True)
 
         # optimizers
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            self.d_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
-                      .minimize(self.d_loss, var_list=d_vars)
-            self.g_optim = tf.train.MomentumOptimizer(learning_rate_decay, 0.9)
-            .minimize(self.g_loss, global_step=global_step)
+            self.d_optim = tf.train.AdamOptimizer(self.learning_rate, 
+                              beta1=self.beta1).minimize(self.d_loss, var_list=d_vars)
+            self.g_optim = tf.train.MomentumOptimizer(learning_rate_decay,
+                              0.9).minimize(self.g_loss, global_step=global_step)
             ##self.g_optim = tf.train.AdamOptimizer(self.learning_rate * 3, beta1=self.beta1) \
             ##          .minimize(self.g_loss, var_list=g_vars) # lr *5 beta1 ????
         
