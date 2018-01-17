@@ -45,15 +45,16 @@ class CGAN(object):
 
     def real_getA(self, t, graph):
         neg_t = -tf.reshape(t, [self.batch_size, -1], name='g_neg_t')
+        flatten_graph = tf.reshape(graph, [self.batch_size, -1], name='g_flat_graph')
         numpx = math.floor(self.input_height * self.input_weight / 1000.0)
         _, col = tf.nn.top_k(neg_t, numpx)
         col = tf.reshape(col, (self.batch_size, numpx))
         row = tf.tile(tf.expand_dims(tf.range(self.batch_size), 1), [1, numpx])
 
         idx = tf.stack([row, col], axis=2)
-        res = tf.gather_nd(graph, idx)
+        top_k = tf.gather_nd(flatten_graph, idx)
         
-        A = -tf.reduce_mean(top_k, axis=1, name='g_A')
+        A = tf.reduce_mean(top_k, axis=1, name='g_A')
         A = tf.reshape(A, [self.batch_size, 1, 1, 1])
         A = tf.tile(A, [1, self.input_height, self.input_weight, self.input_channel])
         return A
