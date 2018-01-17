@@ -43,6 +43,22 @@ class CGAN(object):
         # self.num_batches = len(self.data_X) // self.batch_size
         self.num_batches = self.train_set.total_batches
 
+    def real_getA(self, t, graph):
+        neg_t = -tf.reshape(t, [self.batch_size, -1], name='g_neg_t')
+        numpx = math.floor(self.input_height * self.input_weight / 1000.0)
+        _, col = tf.nn.top_k(neg_t, numpx)
+        col = tf.reshape(col, (self.batch_size, numpx))
+        row = tf.tile(tf.expand_dims(tf.range(self.batch_size), 1), [1, numpx])
+
+        idx = tf.stack([row, col], axis=2)
+        res = tf.gather_nd(graph, idx)
+        
+        A = -tf.reduce_mean(top_k, axis=1, name='g_A')
+        A = tf.reshape(A, [self.batch_size, 1, 1, 1])
+        A = tf.tile(A, [1, self.input_height, self.input_weight, self.input_channel])
+        return A
+        
+
     def getA(self, t):
         neg_t = -tf.reshape(t, [self.batch_size, -1], name='g_neg_t')
         numpx = math.floor(self.input_height * self.input_weight / 1000.0)
@@ -269,7 +285,7 @@ class CGAN(object):
             F_Out = tf.layers.dense(F_Out_i, units=1, activation=tf.nn.sigmoid, name="g_f_out", reuse=reuse)
             t_out = tf.reshape(F_Out, [self.batch_size, self.input_height, self.input_weight, 1])
 
-            A = self.getA(t_out)
+            A = self.real_getA(t_out, x)
             t_x = tf.tile(t_out, [1, 1, 1, 3])
             out = (x - A) / tf.maximum(0.1, t_x) + A
 
@@ -289,7 +305,7 @@ class CGAN(object):
         # Conditional GAN
         D_real, D_real_logits, _ = self.discriminator(self.y, self.x, is_training=True, reuse=False)
         G, t = self.generator(self.z, self.x, is_training=True, reuse=False)
-        A = self.getA(t)
+        A = self.real_getA(t, self.x)
         A = tf.reduce_mean(A)
         D_fake, D_fake_logits, _ = self.discriminator(G, self.x, is_training=True, reuse=True)
         # ===== D loss =====
