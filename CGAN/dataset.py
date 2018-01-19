@@ -65,7 +65,9 @@ class DataSet(object):
             return original_img, hazed_img, tx
 
     def shuffle_data(self):
-        random.shuffle(self.image_list)
+        # test set should not be shuffled
+        if (not self.is_test):
+            random.shuffle(self.image_list)
 
     def next_batch(self):
         self.end_index = min([self.cur_index + self.batch_size, self.total_images])
