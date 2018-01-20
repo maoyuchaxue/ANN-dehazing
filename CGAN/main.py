@@ -76,7 +76,7 @@ def main():
 
         # launch the graph in a session
         
-        if (arg.generate):
+        if (args.generate):
             gan.generate_image()
         elif (args.test):
             gan.test()

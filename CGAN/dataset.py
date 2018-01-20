@@ -33,10 +33,9 @@ class DataSet(object):
         height, weight, channels = img_data.shape
 
         if (self.is_generate):
-            original_img = cv2.resize(original_img_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
+            original_img = cv2.resize(img_data, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
             original_img = original_img * 2 - 1
-            hazed_img = hazed_img * 2 - 1
-            return original_img, hazed_img
+            return original_img
         
         elif (self.is_test):
             # no t(x) is provided for test set
@@ -83,7 +82,10 @@ class DataSet(object):
         array_tx = []
         for i in range(self.cur_index, self.end_index):
             # print(self.image_list[i])
-            if (self.is_test):
+            if (self.is_generate):
+                original_img = self.read_image(self.image_list[i])
+                hazed_img = 0
+            elif (self.is_test):
                 original_img, hazed_img = self.read_image(self.image_list[i])
             else:
                 original_img, hazed_img, tx = self.read_image(self.image_list[i])
@@ -96,8 +98,9 @@ class DataSet(object):
         if (self.cur_index >= self.total_images):
             self.cur_index = 0
             self.shuffle_data()
-            
-        if (self.is_test):
+        if (self.is_generate):
+            return np.array(array_original_img)  
+        elif (self.is_test):
             return np.array(array_hazed_img), np.array(array_original_img)
         else:        
             return np.array(array_hazed_img), np.array(array_original_img), np.array(array_tx)
