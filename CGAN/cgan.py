@@ -7,6 +7,8 @@ import numpy as np
 import vgg16
 from dataset import DataSet
 from utils import *
+from evaluation_funcs import *
+
 if "concat_v2" in dir(tf):
     def concat(tensors, axis, *args, **kwargs):
         return tf.concat_v2(tensors, axis, *args, **kwargs)
@@ -461,33 +463,29 @@ class CGAN(object):
             # show temporal results
             # self.visualize_results(epoch)
 
+            # for every epoch, run on test set
+            
+
+            self.test_with_current_model(epoch)
+
         # save model for final step
         self.save(self.checkpoint_dir, counter)
 
-    
-    def test(self):
-        # initialize all variables
-        tf.global_variables_initializer().run()
+    def test_with_current_model(self, epoch):
+        print(" [*] Testing with epoch " + str(epoch))
 
-        # restore check-point if it exits
-        could_load, checkpoint_counter = self.load(self.checkpoint_dir)
-        if could_load:
-            start_epoch = (int)(checkpoint_counter / self.num_batches)
-            start_batch_id = checkpoint_counter - start_epoch * self.num_batches
-            counter = checkpoint_counter
-            print(" [*] Load SUCCESS")
-            print(" [*] Testing with epoch " + str(start_epoch))
-        else:
-            print(" [!] Load failed, cannot find model")
-            print(" [!] Test failed")
-            return 
-        
         start_time = time.time()
         test_num_batches = self.test_set.total_batches
+
+        PSNRs = []
+        SSIMs = []
+        UQIs = []
 
         # get test batch data
         for idx in range(0, self.num_batches):
             batch_hazed_img, batch_ground_truth = self.test_set.next_batch()
+            if (batch_hazed_img.shape[0] < self.batch_size):
+                break
             batch_z = np.random.uniform(-1, 1, [self.batch_size, self.input_height, self.input_weight, self.z_dim]).astype(np.float32)
 
             samples = self.sess.run(self.fake_images,
@@ -503,6 +501,42 @@ class CGAN(object):
                         './' + check_folder(self.result_dir + '/' + self.model_dir) + '/' + self.model_name + '_test_{:02d}_{:04d}_origin.png'.format(
                             epoch, idx))    
 
+            tPSNRs, tSSIMs, tUQIs = test_image(batch_ground_truth, samples, tot_num_samples)
+            PSNRs.extend(tPSNRs)
+            SSIMs.extend(tSSIMs)
+            UQIs.extend(tUQIs)
+        
+        self.save_test_results(PSNRs, SSIMs, UQIs, epoch)
+    
+    def save_test_results(self, PSNRs, SSIMs, UQIs, epoch):
+        print("Test result for epoch {:d}".format(epoch))
+        print("PSNR: mean {:f}, var {:f}".format(np.mean(PSNRs), np.std(PSNRs)))
+        print("SSIM: mean {:f}, var {:f}".format(np.mean(SSIMs), np.std(SSIMs)))
+        print("UQI: mean {:f}, var {:f}".format(np.mean(UQIs), np.std(UQIs)))
+
+        test_result_log_file_name = './' + check_folder(self.result_dir + '/' + self.model_dir) + '/' + self.model_name + '_test_{:02d}_result.csv'.format(epoch)
+        log_file = open(test_result_log_file_name, "a")
+        log_file.write("{:d},{:f},{:f},{:f},{:f},{:f},{:f}\n".format(epoch, np.mean(PSNRs), np.std(PSNRs),
+            np.mean(SSIMs), np.std(SSIMs), np.mean(UQIs), np.std(UQIs)))
+        log_file.close()
+    
+    def test(self):
+        # initialize all variables
+        tf.global_variables_initializer().run()
+        self.saver = tf.train.Saver()
+        # restore check-point if it exits
+        could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+        if could_load:
+            start_epoch = (int)(checkpoint_counter / self.num_batches)
+            start_batch_id = checkpoint_counter - start_epoch * self.num_batches
+            counter = checkpoint_counter
+            print(" [*] Load SUCCESS")
+            self.test_with_current_model(start_epoch)
+        else:
+            print(" [!] Load failed, cannot find model")
+            print(" [!] Test failed")
+            return 
+        
 
     def load(self, checkpoint_dir):
         import re
