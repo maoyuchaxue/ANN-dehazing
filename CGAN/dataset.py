@@ -4,10 +4,11 @@ import cv2
 import random
 
 class DataSet(object):
-    def __init__(self, data_dir, batch_size, is_test, max_size=-1):
+    def __init__(self, data_dir, batch_size, is_test, is_generate=False, max_size=-1):
         self.DATA_SIZE = 224
         self.data_dir = data_dir
         self.is_test = is_test
+        self.is_generate = is_generate
         self.batch_size = batch_size
         self.max_size = max_size
         self.gen_image_list()
@@ -31,7 +32,13 @@ class DataSet(object):
         img_data = cv2.imread(image_path)
         height, weight, channels = img_data.shape
 
-        if (self.is_test):
+        if (self.is_generate):
+            original_img = cv2.resize(original_img_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
+            original_img = original_img * 2 - 1
+            hazed_img = hazed_img * 2 - 1
+            return original_img, hazed_img
+        
+        elif (self.is_test):
             # no t(x) is provided for test set
 
             dif = (weight//2 - height) // 2

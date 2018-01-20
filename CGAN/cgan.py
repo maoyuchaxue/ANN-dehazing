@@ -157,38 +157,136 @@ class CGAN(object):
             # merge noise and label
             '''
             z = concat([z, x], 1)
-
             net = tf.nn.relu(bn(linear(z, 1024, scope='g_fc1'), is_training=is_training, scope='g_bn1'))
             net = tf.nn.relu(bn(linear(net, 128 * 7 * 7, scope='g_fc2'), is_training=is_training, scope='g_bn2'))
             net = tf.reshape(net, [self.batch_size, 7, 7, 128])
             net = tf.nn.relu(
                 bn(deconv2d(net, [self.batch_size, 14, 14, 64], 4, 4, 2, 2, name='g_dc3'), is_training=is_training,
                    scope='g_bn3'))
-
             out = tf.nn.sigmoid(deconv2d(net, [self.batch_size, 28, 28, 1], 4, 4, 2, 2, name='g_dc4'))
 //
             return out
         '''
             #z = concat([z, x], 3)
-
             tl.layers.set_name_reuse(reuse)
-            Input = tl.layers.InputLayer(x, "g_Input")
-            G_CBP_K1 = self.Conv_BN_PReLu(Input, 3, ngf, "g_CBPK_1", reuse, is_training)
-            G_CBP_K2 = self.Conv_BN_PReLu(G_CBP_K1, ngf, ngf, "g_CBPK_2", reuse, is_training)
-            G_CBP_K3 = self.Conv_BN_PReLu(G_CBP_K2, ngf, ngf, "g_CBPK_3", reuse, is_training)
-            G_CBP_K4 = self.Conv_BN_PReLu(G_CBP_K3, ngf, ngf, "g_CBPK_4", reuse, is_training)
-            G_CBP_K_div_2 = self.Conv_BN_PReLu(G_CBP_K4, ngf, ngf / 2, "g_CBPK/2", reuse, is_training)
-            G_CBP_1 = self.Conv_BN_PReLu(G_CBP_K_div_2, ngf / 2, 1, "g_CBP1", reuse, is_training)
-            G_DBR_K_div_2 = self.DeConv_BN_ReLu(G_CBP_1, 1, ngf / 2, "g_DBRK/2", reuse, is_training)
-            G_DBR_K1 = self.DeConv_BN_ReLu(G_DBR_K_div_2, ngf / 2, ngf, "g_DBRK_1", reuse, is_training)
-            G_DBR_K1.outputs = G_DBR_K1.outputs + G_CBP_K4.outputs
-            G_DBR_K2 = self.DeConv_BN_ReLu(G_DBR_K1, ngf, ngf, "g_DBRK_2", reuse, is_training)
-            G_DBR_K3 = self.DeConv_BN_ReLu(G_DBR_K2, ngf, ngf, "g_DBRK_3", reuse, is_training)
-            G_DBR_K3.outputs = G_DBR_K3.outputs + G_CBP_K2.outputs
-            G_DBR_K4 = self.DeConv_BN_ReLu(G_DBR_K3, ngf, ngf, "g_DBRK_4", reuse, is_training)
-            G_DBR_3 = self.DeConv_BN_ReLu(G_DBR_K4, ngf, 3, "g_DBR3", reuse, is_training)
+            Coarse_Scale_Input = tl.layers.InputLayer(x, "g_c_input")
+            C_Conv_1 = self.Conv_BN_PReLu(Coarse_Scale_Input,
+                                          input_channel=3,
+                                          output_channel=5,
+                                          scope="g_c_conv_1",
+                                          reuse=reuse,
+                                          is_training=is_training,
+                                          kernel_size=11)
+            C_MaxPool_1 = tl.layers.PoolLayer(C_Conv_1,
+                                ksize=[1, 2, 2, 1],
+                                strides=[1, 2, 2, 1],
+                                padding='SAME',
+                                pool=tf.nn.max_pool,
+                                name="g_c_maxpool_1")
+            C_Upsampling_1 = tl.layers.UpSampling2dLayer(C_MaxPool_1,
+                                size=[self.input_height, self.input_weight],
+                                is_scale=False,
+                                method=1,
+                                name="g_c_upsampling_1")
+            C_Conv_2 = self.Conv_BN_PReLu(C_Upsampling_1,
+                                          input_channel=5,
+                                          output_channel=5,
+                                          scope="g_c_conv_2",
+                                          reuse=reuse,
+                                          is_training=is_training,
+                                          kernel_size=9)
+            C_MaxPool_2 = tl.layers.PoolLayer(C_Conv_2,
+                                ksize=[1, 2, 2, 1],
+                                strides=[1, 2, 2, 1],
+                                padding='SAME',
+                                pool=tf.nn.max_pool,
+                                name="g_c_maxpool_2")
+            C_Upsampling_2 = tl.layers.UpSampling2dLayer(C_MaxPool_2,
+                                size=[self.input_height, self.input_weight],
+                                is_scale=False,
+                                method=1,
+                                name="g_c_upsampling_2")
+            C_Conv_3 = self.Conv_BN_PReLu(C_Upsampling_2,
+                                          input_channel=5,
+                                          output_channel=10,
+                                          scope="g_c_conv_3",
+                                          reuse=reuse,
+                                          is_training=is_training,
+                                          kernel_size=7)
+            C_MaxPool_3 = tl.layers.PoolLayer(C_Conv_3,
+                                ksize=[1, 2, 2, 1],
+                                strides=[1, 2, 2, 1],
+                                padding='SAME',
+                                pool=tf.nn.max_pool,
+                                name="g_c_maxpool_3")
+            C_Upsampling_3 = tl.layers.UpSampling2dLayer(C_MaxPool_3,
+                                size=[self.input_height, self.input_weight],
+                                is_scale=False,
+                                method=1,
+                                name="g_c_upsampling_3")
+            C_Out_i = tf.reshape(C_Upsampling_3.outputs, [self.batch_size * self.input_height * self.input_weight, 10])
+            C_Out = tf.layers.dense(C_Out_i, units=1, activation=tf.nn.sigmoid, name="g_c_out", reuse=reuse)
+            C_Out = tf.reshape(C_Out, [self.batch_size, self.input_height, self.input_weight, 1])
 
-            F_Out_i = tf.reshape(G_DBR_3.outputs, [self.batch_size * self.input_height * self.input_weight, 3])
+            Fine_Scale_Input = tl.layers.InputLayer(x, "g_f_input")
+            F_Conv_1 = self.Conv_BN_PReLu(Fine_Scale_Input,
+                                          input_channel=3,
+                                          output_channel=4,
+                                          scope="g_f_conv_1",
+                                          reuse=reuse,
+                                          is_training=is_training,
+                                          kernel_size=7)
+            F_MaxPool_1 = tl.layers.PoolLayer(F_Conv_1,
+                                ksize=[1, 2, 2, 1],
+                                strides=[1, 2, 2, 1],
+                                padding='SAME',
+                                pool=tf.nn.max_pool,
+                                name="g_f_maxpool_1")
+            F_Upsampling_1 = tl.layers.UpSampling2dLayer(F_MaxPool_1,
+                                size=[self.input_height, self.input_weight],
+                                is_scale=False,
+                                method=1,
+                                name="g_f_upsampling_1")
+            F_Upsampling_1_out = tf.concat([F_Upsampling_1.outputs, C_Out], axis=3)
+            F_Concat_Input = tl.layers.InputLayer(F_Upsampling_1_out, name="g_f_concat")
+
+            F_Conv_2 = self.Conv_BN_PReLu(F_Concat_Input,
+                                          input_channel=5,
+                                          output_channel=5,
+                                          scope="g_f_conv_2",
+                                          reuse=reuse,
+                                          is_training=is_training,
+                                          kernel_size=5)
+            F_MaxPool_2 = tl.layers.PoolLayer(F_Conv_2,
+                                ksize=[1, 2, 2, 1],
+                                strides=[1, 2, 2, 1],
+                                padding='SAME',
+                                pool=tf.nn.max_pool,
+                                name="g_f_maxpool_2")
+            F_Upsampling_2 = tl.layers.UpSampling2dLayer(F_MaxPool_2,
+                                size=[self.input_height, self.input_weight],
+                                is_scale=False,
+                                method=1,
+                                name="g_f_upsampling_2")
+            F_Conv_3 = self.Conv_BN_PReLu(F_Upsampling_2,
+                                          input_channel=5,
+                                          output_channel=10,
+                                          scope="g_f_conv_3",
+                                          reuse=reuse,
+                                          is_training=is_training,
+                                          kernel_size=3)
+            F_MaxPool_3 = tl.layers.PoolLayer(F_Conv_3,
+                                ksize=[1, 2, 2, 1],
+                                strides=[1, 2, 2, 1],
+                                padding='SAME',
+                                pool=tf.nn.max_pool,
+                                name="g_f_maxpool_3")
+            F_Upsampling_3 = tl.layers.UpSampling2dLayer(F_MaxPool_3,
+                                size=[self.input_height, self.input_weight],
+                                is_scale=False,
+                                method=1,
+                                name="g_f_upsampling_3")
+            F_Out_i = tf.reshape(F_Upsampling_3.outputs, [self.batch_size * self.input_height * self.input_weight, 10])
             F_Out = tf.layers.dense(F_Out_i, units=1, activation=tf.nn.sigmoid, name="g_f_out", reuse=reuse)
             t_out = tf.reshape(F_Out, [self.batch_size, self.input_height, self.input_weight, 1])
 
@@ -436,7 +534,48 @@ class CGAN(object):
             print(" [!] Load failed, cannot find model")
             print(" [!] Test failed")
             return 
+
+    def generate_image(self):
         
+        tf.global_variables_initializer().run()
+        self.saver = tf.train.Saver()
+        # restore check-point if it exits
+        could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+        if could_load:
+            start_epoch = (int)(checkpoint_counter / self.num_batches)
+            start_batch_id = checkpoint_counter - start_epoch * self.num_batches
+            counter = checkpoint_counter
+            print(" [*] Load SUCCESS")
+            self.generate_image_with_current_model(start_epoch)
+        else:
+            print(" [!] Load failed, cannot find model")
+            print(" [!] Generate failed")
+            return 
+
+    
+    def generate_image_with_current_model(self, epoch):
+        print(" [*] Generating with epoch " + str(epoch))
+
+        start_time = time.time()
+
+        generate_set = DataSet("../data/generateset", 1, False, True)
+        test_num_batches = generate_set.total_batches
+        # get test batch data
+        for idx in range(0, test_num_batches):
+            batch_hazed_img = generate_set.next_batch()
+            batch_z = np.random.uniform(-1, 1, [1, self.input_height, self.input_weight, self.z_dim]).astype(np.float32)
+            samples = self.sess.run(self.fake_images,
+                feed_dict={self.z: batch_z, self.x: batch_hazed_img})
+
+            tot_num_samples = 1
+            manifold_h = 1
+            manifold_w = 1
+            save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
+                        './' + check_folder("graphs" + '/' + self.result_dir + '/' + self.model_dir) + '/' + self.model_name + '_test_{:02d}_{:04d}.png'.format(
+                            epoch, idx))
+            save_images(batch_hazed_img[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
+                        './' + check_folder("graphs" + '/' + self.result_dir + '/' + self.model_dir) + '/' + self.model_name + '_test_{:02d}_{:04d}_origin.png'.format(
+                            epoch, idx))            
 
     def load(self, checkpoint_dir):
         import re
