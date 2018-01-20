@@ -21,26 +21,26 @@ def deHaze(imageRGB, fileName):
 
     print('Getting Dark Channel Prior')
     darkChannel = getDarkChannel(imageRGB);
-    cv2.imwrite('output/' + fileName + '_dark.jpg', darkChannel * 255.0)
+    # cv2.imwrite('output/' + fileName + '_dark.jpg', darkChannel * 255.0)
 
     print('Getting Atmospheric Light')
     atmLight = getAtmLight(imageRGB, darkChannel);
 
     print('Getting Transmission')
     transmission = getTransmission(imageRGB, atmLight);
-    cv2.imwrite('output/' + fileName + '_transmission.jpg', transmission * 255.0)
+    # cv2.imwrite('output/' + fileName + '_transmission.jpg', transmission * 255.0)
 
     print('Getting Scene Radiance', transmission.shape)
     radiance = getRadiance(atmLight, imageRGB, transmission);
-    cv2.imwrite('output/' + fileName + '_radiance.jpg', radiance * 255.0)
+    # cv2.imwrite('output/' + fileName + '_radiance.jpg', radiance * 255.0)
 
     print('Apply Soft Matting')
     mattedTransmission = performSoftMatting(imageRGB, transmission);
-    cv2.imwrite('output/' + fileName + '_refinedTransmission.jpg', mattedTransmission * 255.0)
+    # cv2.imwrite('output/' + fileName + '_refinedTransmission.jpg', mattedTransmission * 255.0)
 
     print('Getting Scene Radiance')
     betterRadiance = getRadiance(atmLight, imageRGB, mattedTransmission);
-    cv2.imwrite('output/' + fileName + '_refinedRadiance.jpg', betterRadiance * 255.0)
+    # cv2.imwrite('output/' + fileName + '_refinedRadiance.jpg', betterRadiance * 255.0)
 
     return radiance, betterRadiance
 

@@ -4,11 +4,10 @@ import cv2
 import random
 
 class DataSet(object):
-    def __init__(self, data_dir, batch_size, is_test, is_generate=False, max_size=-1):
+    def __init__(self, data_dir, batch_size, is_test, max_size=-1):
         self.DATA_SIZE = 224
         self.data_dir = data_dir
         self.is_test = is_test
-        self.is_generate = is_generate
         self.batch_size = batch_size
         self.max_size = max_size
         self.gen_image_list()
@@ -32,12 +31,7 @@ class DataSet(object):
         img_data = cv2.imread(image_path)
         height, weight, channels = img_data.shape
 
-        if (self.is_generate):
-            original_img = cv2.resize(img_data, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
-            original_img = original_img * 2 - 1
-            return original_img
-        
-        elif (self.is_test):
+        if (self.is_test):
             # no t(x) is provided for test set
 
             dif = (weight//2 - height) // 2
@@ -47,8 +41,6 @@ class DataSet(object):
 
             original_img = cv2.resize(original_img_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
             hazed_img = cv2.resize(hazed_img_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
-            original_img = original_img * 2 - 1
-            hazed_img = hazed_img * 2 - 1
 
             return original_img, hazed_img
 
@@ -65,9 +57,6 @@ class DataSet(object):
             tx = cv2.resize(tx_large, (self.DATA_SIZE, self.DATA_SIZE)) / 255.0
             tx = np.reshape(tx[0:self.DATA_SIZE,0:self.DATA_SIZE,0], (self.DATA_SIZE, self.DATA_SIZE, 1)) 
 
-            original_img = original_img * 2 - 1
-            hazed_img = hazed_img * 2 - 1
-
             return original_img, hazed_img, tx
 
     def shuffle_data(self):
@@ -82,10 +71,7 @@ class DataSet(object):
         array_tx = []
         for i in range(self.cur_index, self.end_index):
             # print(self.image_list[i])
-            if (self.is_generate):
-                original_img = self.read_image(self.image_list[i])
-                hazed_img = 0
-            elif (self.is_test):
+            if (self.is_test):
                 original_img, hazed_img = self.read_image(self.image_list[i])
             else:
                 original_img, hazed_img, tx = self.read_image(self.image_list[i])
@@ -98,9 +84,8 @@ class DataSet(object):
         if (self.cur_index >= self.total_images):
             self.cur_index = 0
             self.shuffle_data()
-        if (self.is_generate):
-            return np.array(array_original_img)  
-        elif (self.is_test):
+            
+        if (self.is_test):
             return np.array(array_hazed_img), np.array(array_original_img)
         else:        
             return np.array(array_hazed_img), np.array(array_original_img), np.array(array_tx)

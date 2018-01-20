@@ -36,7 +36,9 @@ def imsave(images, size, path):
     return scipy.misc.imsave(path, image)
 
 def inverse_transform(images):
-    return (images+1.)/2.
+    ret = (images+1.)/2.
+    ret = ret[:,:,:,::-1]
+    return ret
 
 def check_folder(log_dir):
     if not os.path.exists(log_dir):
@@ -44,5 +46,5 @@ def check_folder(log_dir):
     return log_dir
 
 def save_images(images, size, image_path):
-    return imsave(images, size, image_path)
+    return imsave(inverse_transform(images), size, image_path)
 

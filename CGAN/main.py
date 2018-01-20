@@ -8,10 +8,13 @@ import argparse
 def parse_args():
     desc = "Tensorflow implementation of GAN collections"
     parser = argparse.ArgumentParser(description=desc)
-    parser.add_argument('--epoch', type=int, default=20, help='The number of epochs to run')
+    parser.add_argument('--epoch', type=int, default=800, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=4, help='The size of batch')
     parser.add_argument('--z_dim', type=int, default=4, help='Dimension of noise vector')
-    parser.add_argument('--test', help='Is testing')
+    parser.add_argument('--test', help='Is testing', dest='test', action='store_true')
+    parser.set_defaults(test=False)
+    parser.add_argument('--generate', help='Is generating', dest='generate', action='store_true')
+    parser.set_defaults(generate=False)
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoint',
                         help='Directory name to save the checkpoints')
     parser.add_argument('--result_dir', type=str, default='results',
@@ -73,7 +76,9 @@ def main():
 
         # launch the graph in a session
         
-        if (args.test):
+        if (args.generate):
+            gan.generate_image()
+        elif (args.test):
             gan.test()
             print(" [*] Testing finished!")
         else:
