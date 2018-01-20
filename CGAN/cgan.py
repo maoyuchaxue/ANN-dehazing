@@ -18,7 +18,7 @@ else:
    
 
 class CGAN(object):
-    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.001, lambda_d=0.005, lambda_p=0.1, lambda_e=0, lambda_t=40):
+    def __init__(self, sess, epoch, batch_size, z_dim, checkpoint_dir, model_name, model_dir, result_dir, log_dir, learning_rate=0.002, lambda_d=0.005, lambda_p=0.1, lambda_e=0, lambda_t=40):
         self.sess = sess
         self.epoch = epoch
         self.batch_size = batch_size
