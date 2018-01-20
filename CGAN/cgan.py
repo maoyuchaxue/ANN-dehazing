@@ -484,6 +484,8 @@ class CGAN(object):
         # get test batch data
         for idx in range(0, self.num_batches):
             batch_hazed_img, batch_ground_truth = self.test_set.next_batch()
+            if (batch_hazed_img.shape[0] < self.batch_size):
+                break
             batch_z = np.random.uniform(-1, 1, [self.batch_size, self.input_height, self.input_weight, self.z_dim]).astype(np.float32)
 
             samples = self.sess.run(self.fake_images,
@@ -521,7 +523,7 @@ class CGAN(object):
     def test(self):
         # initialize all variables
         tf.global_variables_initializer().run()
-
+        self.saver = tf.train.Saver()
         # restore check-point if it exits
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
         if could_load:
