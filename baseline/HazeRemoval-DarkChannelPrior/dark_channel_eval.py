@@ -47,9 +47,9 @@ def save_test_results(PSNRs, SSIMs, UQIs):
     print("SSIM: mean {:f}, var {:f}".format(np.mean(SSIMs), np.std(SSIMs)))
     print("UQI: mean {:f}, var {:f}".format(np.mean(UQIs), np.std(UQIs)))
 
-    test_result_log_file_name = "./result/metrics.csv" 
+    test_result_log_file_name = "./result/hazed_metrics.csv" 
     log_file = open(test_result_log_file_name, "a")
-    log_file.write("{:d},{:f},{:f},{:f},{:f},{:f},{:f}\n".format(epoch, np.mean(PSNRs), np.std(PSNRs),
+    log_file.write("{:f},{:f},{:f},{:f},{:f},{:f}\n".format(np.mean(PSNRs), np.std(PSNRs),
         np.mean(SSIMs), np.std(SSIMs), np.mean(UQIs), np.std(UQIs)))
     log_file.close()
 
@@ -62,15 +62,17 @@ PSNRs = []
 SSIMs = []
 UQIs = []
 
-log_res_file = "./result/log.csv"
+log_res_file = "./result/hazedlog.csv"
 # get test batch data
 for idx in range(0, num_batches):
     batch_hazed_img, batch_ground_truth = test_set.next_batch()
     if (batch_hazed_img.shape[0] < batch_size):
         break
     for i in range(batch_size):
-        rad, refined = deHaze(batch_hazed_img[i])
-        tPSNR, tSSIM, tUQI = test_image(batch_ground_truth[i], refined)
+        # rad, refined = deHaze(batch_hazed_img[i])
+        # tPSNR, tSSIM, tUQI = test_image(batch_ground_truth[i], refined)
+        
+        tPSNR, tSSIM, tUQI = test_image(batch_ground_truth[i], batch_hazed_img[i])
         # print(PSNR, SSIM, UQI)
         
         log_f = open(log_res_file, "a")
